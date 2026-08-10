@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+rootfs="$project_dir/output/bk-nabu-rootfs"
+report="$project_dir/output/BUILD-REPORT.md"
+profile=${1:-release}
+distro_commit=$(git -C "$project_dir" rev-parse HEAD)
+shell_commit=$(git -C "$(dirname "$project_dir")/bk-shell" rev-parse HEAD)
+
+packages=$(bwrap \
+  --unshare-user --uid 0 --gid 0 --unshare-pid --unshare-uts --unshare-ipc \
+  --die-with-parent --ro-bind "$rootfs" / --proc /proc --dev /dev --tmpfs /tmp \
+  /usr/bin/pacman -Q | LC_ALL=C sort)
+
+{
+  printf '# BK nabu build report\n\n'
+  printf -- '- Profile: `%s`\n' "$profile"
+  printf -- '- Distribution commit: `%s`\n' "$distro_commit"
+  printf -- '- Shell commit: `%s`\n' "$shell_commit"
+  printf -- '- Kernel release: `6.18.42-nabu-bkb26810`\n'
+  printf -- '- mkosi: `%s`\n' "$(mkosi --version)"
+  printf -- '- Rubik SHA-256: `795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e`\n'
+  printf -- '- Noto Sans SC SHA-256: `4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec`\n'
+  printf '\n## Packages\n\n```text\n%s\n```\n' "$packages"
+} >"$report"

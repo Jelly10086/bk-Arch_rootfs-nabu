@@ -1,0 +1,89 @@
+environment {
+    XDG_CURRENT_DESKTOP "niri"
+    XDG_SESSION_DESKTOP "niri"
+    GTK_IM_MODULE "fcitx"
+    QT_IM_MODULE "fcitx"
+    XMODIFIERS "@im=fcitx"
+}
+
+spawn-at-startup "systemctl" "--user" "start" "bk-shell.service"
+
+input {
+    keyboard {
+        xkb {
+            layout "us"
+        }
+    }
+    touchpad {
+        tap
+        natural-scroll
+    }
+    mouse {
+        accel-speed 0.0
+    }
+}
+
+gestures {
+    hot-corners {
+        off
+    }
+}
+
+layout {
+    gaps 12
+    center-focused-column "on-overflow"
+    default-column-width { proportion 0.72; }
+    preset-column-widths {
+        proportion 0.50
+        proportion 0.72
+        proportion 1.00
+    }
+    focus-ring {
+        width 3
+        active-color "#7aa2f7"
+        inactive-color "#414868"
+    }
+    border { off; }
+}
+
+animations {
+    window-open { duration-ms 180; curve "ease-out-expo"; }
+    window-close { duration-ms 150; curve "ease-out-quad"; }
+    screenshot-ui-open { duration-ms 180; curve "ease-out-quad"; }
+}
+
+prefer-no-csd
+hotkey-overlay { skip-at-startup; }
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+binds {
+    Mod+T { spawn "foot"; }
+    Mod+Space { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    Mod+V { spawn "dms" "ipc" "call" "clipboard" "toggle"; }
+    Mod+N { spawn "dms" "ipc" "call" "notifications" "toggle"; }
+    Mod+Comma { spawn "dms" "ipc" "call" "settings" "focusOrToggle"; }
+    Mod+Alt+L { spawn "dms" "ipc" "call" "lock" "lock"; }
+    Super+X { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
+
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "dms" "ipc" "call" "audio" "increment" "3"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "dms" "ipc" "call" "audio" "decrement" "3"; }
+    XF86AudioMute allow-when-locked=true { spawn "dms" "ipc" "call" "audio" "mute"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "dms" "ipc" "call" "brightness" "increment" "5" ""; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "dms" "ipc" "call" "brightness" "decrement" "5" ""; }
+
+    Mod+Q repeat=false { close-window; }
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+    Mod+O repeat=false { toggle-overview; }
+    Mod+Tab repeat=false { toggle-overview; }
+    Mod+Left { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Up { focus-window-up; }
+    Mod+Down { focus-window-down; }
+    Mod+Shift+Left { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+Page_Up { focus-workspace-up; }
+    Mod+Page_Down { focus-workspace-down; }
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+}

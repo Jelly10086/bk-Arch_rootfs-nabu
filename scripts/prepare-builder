@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+builder_root=${BK_BUILDER_ROOT:-"$project_dir/build/builder-root"}
+rootfs_archive="$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz"
+
+if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
+  [[ -f $rootfs_archive ]] || {
+    echo "missing Arch Linux ARM rootfs: $rootfs_archive" >&2
+    exit 1
+  }
+  case $builder_root in
+    "$project_dir"/build/builder-root) ;;
+    *) echo "unsafe builder path: $builder_root" >&2; exit 1 ;;
+  esac
+  rm -rf -- "$builder_root"
+  mkdir -p "$builder_root"
+  bsdtar -xpf "$rootfs_archive" -C "$builder_root"
+fi
+
+mkdir -p "$builder_root/workspace" "$builder_root/mnt"
+
+bwrap \
+  --unshare-user --uid 0 --gid 0 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$builder_root" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --setenv HOME /root \
+  /usr/bin/pacman -Syu --needed --noconfirm --disable-sandbox \
+    base-devel bc cmake cpio dtc gettext git go inetutils kmod libelf \
+    ninja pahole patch python >&2
+
+printf '%s\n' "$builder_root"

@@ -1,0 +1,14 @@
+# Arch Linux ARM userspace
+base
+base-devel
+sudo
+zsh
+mkinitcpio
+systemd-ukify
+linux-firmware
+networkmanager
+systemd-resolvconf
+openssh
+ca-certificates
+bk-defaults
+bk-packagelist

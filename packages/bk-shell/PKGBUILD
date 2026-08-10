@@ -1,0 +1,108 @@
+pkgbase=bk-shell
+pkgname=('bk-shell' 'bk-keyboard' 'bk-greeter')
+pkgver=0.1.0
+pkgrel=1
+arch=('aarch64')
+url='https://github.com/AvengeMedia/DankMaterialShell'
+license=('GPL-3.0-only')
+makedepends=('cmake' 'go' 'make' 'ninja' 'patch')
+options=('!debug')
+source=()
+sha256sums=()
+
+_shell_commit=90ef69f87ebd127da7b7fb06ec0b12cb09276e94
+_shell_source=${BK_SHELL_SOURCE:-"$startdir/../../../bk-shell"}
+
+prepare() {
+  [[ -d "$_shell_source/.git" ]] || {
+    printf 'bk-shell checkout not found: %s\n' "$_shell_source" >&2
+    return 1
+  }
+
+  local actual
+  actual=$(git -C "$_shell_source" rev-parse HEAD)
+  [[ $actual == "$_shell_commit" ]] || {
+    printf 'bk-shell commit mismatch: expected %s, got %s\n' \
+      "$_shell_commit" "$actual" >&2
+    return 1
+  }
+
+  git -C "$_shell_source" submodule status --recursive \
+    | grep -q '^[-+U]' && {
+      echo 'bk-shell contains an uninitialized or mismatched submodule' >&2
+      return 1
+    }
+  return 0
+}
+
+build() {
+  cmake -S "$_shell_source" -B "$srcdir/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBK_BUILD_UPSTREAMS=ON
+  cmake --build "$srcdir/build"
+
+  rm -rf "$srcdir/stage"
+  DESTDIR="$srcdir/stage" cmake --install "$srcdir/build"
+}
+
+package_bk-shell() {
+  pkgdesc='DMS-backed tablet shell for Xiaomi Pad 5'
+  depends=(
+    'accountsservice' 'bk-keyboard' 'bluez' 'brightnessctl' 'cliphist'
+    'dbus' 'networkmanager' 'niri' 'pipewire' 'playerctl' 'polkit'
+    'power-profiles-daemon' 'quickshell>=0.3.0' 'systemd' 'upower'
+    'wireplumber' 'wl-clipboard'
+  )
+  optdepends=('matugen: wallpaper color generation')
+
+  install -Dm755 "$srcdir/stage/usr/bin/dms" "$pkgdir/usr/bin/dms"
+  install -Dm755 "$srcdir/stage/usr/bin/bk-shell" "$pkgdir/usr/bin/bk-shell"
+  install -Dm755 "$srcdir/stage/usr/bin/bk-shell-stock" "$pkgdir/usr/bin/bk-shell-stock"
+  install -d "$pkgdir/usr/share/quickshell"
+  cp -a "$srcdir/stage/usr/share/quickshell/bk-shell" "$pkgdir/usr/share/quickshell/"
+  cp -a "$srcdir/stage/usr/share/quickshell/dms-stock" "$pkgdir/usr/share/quickshell/"
+  rm -rf "$pkgdir/usr/share/quickshell/bk-shell/Bk/Keyboard"
+  install -Dm644 "$srcdir/stage/usr/lib/systemd/user/bk-shell.service" \
+    "$pkgdir/usr/lib/systemd/user/bk-shell.service"
+  install -Dm644 "$srcdir/stage/usr/lib/systemd/user/bk-shell-stock.service" \
+    "$pkgdir/usr/lib/systemd/user/bk-shell-stock.service"
+  install -Dm644 "$_shell_source/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$_shell_source/UPSTREAMS.md" "$pkgdir/usr/share/licenses/$pkgname/UPSTREAMS.md"
+}
+
+package_bk-keyboard() {
+  pkgdesc='Shared BK touch keyboard for desktop and greeter sessions'
+  depends=('quickshell>=0.3.0')
+  optdepends=('bk-shell: virtual-keyboard backend for regular applications')
+
+  install -Dm755 "$srcdir/stage/usr/bin/bk-keyboard" "$pkgdir/usr/bin/bk-keyboard"
+  install -d "$pkgdir/usr/share/quickshell/bk-shell/Bk" \
+    "$pkgdir/usr/share/quickshell/bk-greeter/Bk"
+  cp -a "$srcdir/stage/usr/share/quickshell/bk-shell/Bk/Keyboard" \
+    "$pkgdir/usr/share/quickshell/bk-shell/Bk/"
+  cp -a "$srcdir/stage/usr/share/quickshell/bk-greeter/Bk/Keyboard" \
+    "$pkgdir/usr/share/quickshell/bk-greeter/Bk/"
+  install -Dm644 "$_shell_source/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
+
+package_bk-greeter() {
+  pkgdesc='Touch-capable greetd front end for BK nabu'
+  depends=('bk-keyboard' 'greetd' 'niri' 'pam' 'quickshell>=0.3.0')
+  backup=('etc/greetd/config.toml')
+
+  install -Dm755 "$srcdir/stage/usr/bin/dms-greeter" "$pkgdir/usr/bin/dms-greeter"
+  install -Dm755 "$srcdir/stage/usr/bin/bk-greeter" "$pkgdir/usr/bin/bk-greeter"
+  install -d "$pkgdir/usr/share/quickshell"
+  cp -a "$srcdir/stage/usr/share/quickshell/bk-greeter" "$pkgdir/usr/share/quickshell/"
+  rm -rf "$pkgdir/usr/share/quickshell/bk-greeter/Bk/Keyboard"
+  install -Dm644 "$srcdir/stage/etc/greetd/config.toml" "$pkgdir/etc/greetd/config.toml"
+  install -Dm644 "$srcdir/stage/usr/share/bk-greeter/niri.kdl" \
+    "$pkgdir/usr/share/bk-greeter/niri.kdl"
+  install -Dm644 "$srcdir/stage/usr/lib/sysusers.d/bk-greeter.conf" \
+    "$pkgdir/usr/lib/sysusers.d/bk-greeter.conf"
+  install -Dm644 "$srcdir/stage/usr/lib/tmpfiles.d/bk-greeter.conf" \
+    "$pkgdir/usr/lib/tmpfiles.d/bk-greeter.conf"
+  install -Dm644 "$_shell_source/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$_shell_source/UPSTREAMS.md" "$pkgdir/usr/share/licenses/$pkgname/UPSTREAMS.md"
+}

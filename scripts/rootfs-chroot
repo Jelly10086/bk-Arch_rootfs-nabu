@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+rootfs="$project_dir/output/bk-nabu-rootfs"
+
+if [[ ! -x "$rootfs/bin/bash" ]]; then
+    echo "RootFS is missing: $rootfs" >&2
+    exit 1
+fi
+
+exec bwrap \
+    --unshare-all \
+    --share-net \
+    --die-with-parent \
+    --uid 0 \
+    --gid 0 \
+    --bind "$rootfs" / \
+    --dev /dev \
+    --proc /proc \
+    --ro-bind /sys /sys \
+    --ro-bind "$project_dir/output/packages" /run/bk-packages \
+    --tmpfs /run/lock \
+    "$@"

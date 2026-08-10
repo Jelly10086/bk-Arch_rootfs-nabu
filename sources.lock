@@ -1,0 +1,103 @@
+format = 1
+
+[[git]]
+name = "linux-nabu"
+url = "https://github.com/TwinbornPlate75/linux-nabu.git"
+ref = "sm8150/6.18"
+commit = "bf584639297f67a855ac14a381c18576b7c77843"
+
+[[git]]
+name = "nabu-pkgs"
+url = "https://github.com/Kumar-Jy/nabu-pkgs.git"
+ref = "main"
+commit = "8a373bff243630523222c6f3f89d051c72dd1df0"
+
+[[git]]
+name = "nabu-arch-images"
+url = "https://github.com/Kumar-Jy/Nabu-arch-images.git"
+ref = "non-atomic"
+commit = "be0d285945d2b4c9e768df1a0aaa0b0887dc95b6"
+
+[[git]]
+name = "project-aloha"
+url = "https://github.com/Project-Aloha/mu_aloha_platforms.git"
+ref = "main"
+commit = "10f17ac975ef15f3b04eb13aa4d71b9d240b1270"
+
+[[git]]
+name = "refind-tokyo-night"
+url = "https://github.com/almighty-loaf/rEFInd-tokyo-night.git"
+ref = "main"
+commit = "19d243e19c79e82bedf413f3e28eba7c3469cc69"
+
+[[git]]
+name = "niri"
+url = "https://github.com/niri-wm/niri.git"
+ref = "v26.04"
+commit = "8ed0da44d974c32c6877d2f4630c314da0717ecb"
+
+[[git]]
+name = "dms"
+url = "https://github.com/AvengeMedia/DankMaterialShell.git"
+ref = "master"
+commit = "db1ab5b7b42a222d5a4e7bcc9c4bc2c6efab65dd"
+
+[[git]]
+name = "clavis"
+url = "https://github.com/StatIndet/quickshell.git"
+ref = "main"
+commit = "ff54f4a12917d628e91ce7efb0dbf87f0c778a17"
+
+[[git]]
+name = "dank-greeter"
+url = "https://github.com/AvengeMedia/dank-greeter.git"
+ref = "master"
+commit = "f353eafdee856a2e1c6ce87ce551304e8a6ed404"
+
+[[git]]
+name = "endeavouros-pkgbuilds"
+url = "https://github.com/endeavouros-team/PKGBUILDS.git"
+ref = "master"
+commit = "4af0a7c600b4e5c22eec55505b6f216ac73506ed"
+
+[[archive]]
+name = "archlinuxarm-rootfs"
+path = "cache/ArchLinuxARM-aarch64-latest.tar.gz"
+sha256 = "42a4eeaa038994ffd31fa173256ef2f0ef511358eeb41b9ea1f8626391b9b319"
+
+[[archive]]
+name = "rubik"
+path = "assets/fonts/Rubik.zip"
+sha256 = "795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e"
+
+[[archive]]
+name = "noto-sans-sc"
+url = "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip"
+path = "cache/sources/fonts/18_NotoSansSC.zip"
+sha256 = "4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec"
+
+[[archive]]
+name = "yay"
+url = "https://github.com/Jguer/yay/archive/refs/tags/v13.0.1.tar.gz"
+path = "cache/sources/yay/yay-13.0.1.tar.gz"
+sha256 = "b77454bce87110180a1b6664c2d260de78124c9894b71101610ba84f551eb0d0"
+
+[[archive]]
+name = "linux-firmware-xiaomi-nabu"
+url = "https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo/linux-firmware-xiaomi-nabu-25.04.26-1-any.pkg.tar.xz"
+path = "cache/sources/nabu-repo/linux-firmware-xiaomi-nabu-25.04.26-1-any.pkg.tar.xz"
+sha256 = "bef43c32029902bc4c3c1b7c7007c6e5d954fe673933087a836b5a41b567bac9"
+
+[[archive]]
+name = "nabu-pmac"
+url = "https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo/nabu-pmac-1-2-any.pkg.tar.xz"
+path = "cache/sources/nabu-repo/nabu-pmac-1-2-any.pkg.tar.xz"
+sha256 = "9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6"
+
+[[artifact]]
+name = "xiaomi-nabu-nosb-boot"
+sha256 = "630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f"
+
+[[artifact]]
+name = "sm8150-nosb-fd"
+sha256 = "7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab"

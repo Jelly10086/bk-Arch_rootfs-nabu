@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ! -e /usr/lib/bk/os-release ]]; then
+  echo 'bk-defaults: /usr/lib/bk/os-release is missing' >&2
+  exit 1
+fi
+
+rm -f /etc/os-release
+ln -s ../usr/lib/bk/os-release /etc/os-release
+printf 'mipad5\n' >/etc/hostname
+
+if ! grep -q '^\[nabu\]$' /etc/pacman.conf; then
+  printf '\n%s\n' \
+    '[nabu]' \
+    'SigLevel = Never' \
+    'Include = /etc/pacman.d/nabu-mirrorlist' \
+    >>/etc/pacman.conf
+fi
+
+if getent passwd alarm >/dev/null; then
+  userdel --remove alarm 2>/dev/null || userdel alarm
+fi
+
+if getent passwd 1000 >/dev/null && ! getent passwd unkn0wn >/dev/null; then
+  echo 'bk-defaults: UID 1000 is occupied' >&2
+  exit 1
+fi
+
+getent group wheel >/dev/null || groupadd wheel
+if ! getent passwd unkn0wn >/dev/null; then
+  useradd --create-home --uid 1000 --gid users --groups wheel \
+    --shell /bin/zsh --comment Unkn0wn unkn0wn
+fi
+
+extra_groups=(wheel)
+for group in audio video input; do
+  getent group "$group" >/dev/null && extra_groups+=("$group")
+done
+groups_csv=$(IFS=,; echo "${extra_groups[*]}")
+usermod --uid 1000 --append --groups "$groups_csv" \
+  --shell /bin/zsh --comment Unkn0wn unkn0wn
+printf '%s\n' 'unkn0wn:$6$bkxiaomi$FiaPPRxIB4lgo4vwLGy40ZYDMhcn/jC46eeB6/T3r4w8apBg59lOPI.bIbQtlSHTI86ctVo0J5aQiycvbpYsU/' \
+  | chpasswd --encrypted
+passwd --lock root >/dev/null
+
+install -d -m0750 -o unkn0wn -g users /home/unkn0wn
+cp -a -n /etc/skel/. /home/unkn0wn/
+chown -R unkn0wn:users /home/unkn0wn
+chmod 0440 /etc/sudoers.d/10-wheel
+
+uid=$(id -u unkn0wn)
+[[ $uid == 1000 ]] || { echo "bk-defaults: unexpected UID $uid" >&2; exit 1; }
+[[ $(getent passwd unkn0wn | cut -d: -f5) == Unkn0wn ]] \
+  || { echo 'bk-defaults: unexpected display name' >&2; exit 1; }

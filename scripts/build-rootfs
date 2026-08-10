@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+profile=${1:-release}
+public_build=${BK_PUBLIC_BUILD:-0}
+rootfs="$project_dir/output/bk-nabu-rootfs"
+repo_dir="$project_dir/output/packages"
+profile_file="$project_dir/profiles/$profile/packages"
+list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
+
+[[ -f $profile_file ]] || { echo "unknown profile: $profile" >&2; exit 2; }
+[[ -f $repo_dir/bk.db.tar.zst ]] || { echo 'build the [bk] repository first' >&2; exit 1; }
+
+mkosi --directory="$project_dir/image" --profile="$profile" --force build
+mkdir -p "$rootfs/mnt" "$rootfs/boot/efi/EFI/arch"
+
+mapfile -t package_profiles <"$profile_file"
+mapfile -t packages < <(
+  BK_PACKAGE_LIST_DIR="$list_dir" \
+    "$project_dir/packages/bk-packagelist/files/usr/bin/bk-packagelist" \
+    "${package_profiles[@]}"
+)
+
+pacman_config="$rootfs/etc/pacman-bk.conf"
+cp "$rootfs/etc/pacman.conf" "$pacman_config"
+printf '\n%s\n' \
+  '[nabu]' \
+  'SigLevel = Never' \
+  'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
+  '[bk]' \
+  'SigLevel = Optional TrustAll' \
+  'Server = file:///mnt' \
+  >>"$pacman_config"
+
+bwrap \
+  --unshare-user --uid 0 --gid 0 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$rootfs" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --ro-bind "$repo_dir" /mnt \
+  --setenv HOME /root \
+  /usr/bin/pacman --config /etc/pacman-bk.conf \
+    -Syu --needed --noconfirm --disable-sandbox -- "${packages[@]}"
+rm -f -- "$pacman_config"
+
+if [[ $public_build != 1 && -d $project_dir/local-overrides/rootfs ]]; then
+  cp -a "$project_dir/local-overrides/rootfs/." "$rootfs/"
+fi
+
+bwrap \
+  --unshare-user --uid 0 --gid 0 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$rootfs" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --setenv HOME /root \
+  /usr/bin/bash -lc 'fc-cache -f; systemd-tmpfiles --create; mkinitcpio -p linux-nabu'
+
+systemctl --root="$rootfs" preset-all
+systemctl --root="$rootfs" --global preset-all
+
+install -Dm644 "$rootfs/boot/efi/EFI/arch/arch-linux-nabu.efi" \
+  "$project_dir/output/arch-linux-nabu.efi"

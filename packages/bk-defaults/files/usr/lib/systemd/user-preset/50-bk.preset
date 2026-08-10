@@ -1,0 +1,4 @@
+enable pipewire.service
+enable pipewire-pulse.service
+enable wireplumber.service
+enable bk-shell.service

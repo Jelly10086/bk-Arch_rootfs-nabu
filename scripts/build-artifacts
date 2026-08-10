@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+rootfs="$project_dir/output/bk-nabu-rootfs"
+esp="$project_dir/output/esp"
+nabu_source="$project_dir/cache/sources/git/nabu-arch-images"
+theme_source="$project_dir/cache/sources/git/refind-tokyo-night"
+firmware_source="$project_dir/cache/sources/firmware"
+
+[[ -f $rootfs/boot/efi/EFI/arch/arch-linux-nabu.efi ]] || {
+  echo 'UKI is missing from RootFS' >&2
+  exit 1
+}
+
+case $esp in
+  "$project_dir"/output/esp) ;;
+  *) echo "unsafe ESP path: $esp" >&2; exit 1 ;;
+esac
+rm -rf -- "$esp"
+mkdir -p "$esp"
+cp -a "$nabu_source/base/overlay/opt/nabu/efi-template/." "$esp/"
+mkdir -p "$esp/EFI/BOOT/themes/rEFInd-tokyo-night" "$esp/EFI/arch"
+cp -a "$theme_source/." "$esp/EFI/BOOT/themes/rEFInd-tokyo-night/"
+rm -rf -- "$esp/EFI/BOOT/themes/rEFInd-tokyo-night/.git"
+sed -i \
+  -e 's/# Load rEFInd theme Regular/# Load rEFInd theme Tokyo Night/' \
+  -e 's#include themes/refind-theme-regular/theme.conf#include themes/rEFInd-tokyo-night/theme.conf#' \
+  "$esp/EFI/BOOT/refind.conf"
+install -m644 "$rootfs/boot/efi/EFI/arch/arch-linux-nabu.efi" \
+  "$esp/EFI/arch/arch-linux-nabu.efi"
+
+mkdir -p "$project_dir/output/firmware"
+install -m644 "$firmware_source/SM8150_EFI_NOSB.fd" "$project_dir/output/firmware/"
+install -m644 "$firmware_source/xiaomi-nabu_NOSB.img" "$project_dir/output/firmware/"
+
+rootfs_image="$project_dir/output/bk-nabu-rootfs.img"
+rootfs_bytes=$(du -s -B1 "$rootfs" | awk '{print $1}')
+image_bytes=$(( (rootfs_bytes + 1610612735) / 268435456 * 268435456 ))
+truncate -s "$image_bytes" "$rootfs_image"
+mkfs.ext4 -F -L BK_NABU -d "$rootfs" "$rootfs_image"
+e2fsck -fn "$rootfs_image"
+
+grep -q '^include themes/rEFInd-tokyo-night/theme.conf$' "$esp/EFI/BOOT/refind.conf"

@@ -1,0 +1,20 @@
+# BK command-line environment
+git
+pacman-contrib
+fastfetch
+btop
+eza
+bat
+fd
+ripgrep
+fzf
+zoxide
+yazi
+jq
+7zip
+wl-clipboard
+zsh-completions
+zsh-autosuggestions
+zsh-syntax-highlighting
+yay
+bk-log

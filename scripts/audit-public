@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+scan_artifacts=0
+[[ ${1:-} == --artifacts ]] && scan_artifacts=1
+needle=$(printf '\155\151\163\141\156\163')
+
+if git -C "$project_dir" grep -I -in "$needle" -- .; then
+  echo 'forbidden private font reference found in tracked files' >&2
+  exit 1
+fi
+if git -C "$project_dir" log --all -p -- . | LC_ALL=C tr '[:upper:]' '[:lower:]' | grep -a -q "$needle"; then
+  echo 'forbidden private font reference found in Git history' >&2
+  exit 1
+fi
+
+if [[ $scan_artifacts == 1 ]]; then
+  while IFS= read -r -d '' path; do
+    if LC_ALL=C strings -a "$path" | tr '[:upper:]' '[:lower:]' | grep -q "$needle"; then
+      printf 'forbidden private font content found: %s\n' "$path" >&2
+      exit 1
+    fi
+  done < <(find "$project_dir/output" -type f -print0)
+fi

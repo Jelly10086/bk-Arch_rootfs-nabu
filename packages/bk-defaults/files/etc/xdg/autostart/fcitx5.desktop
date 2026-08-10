@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Fcitx 5
+Exec=fcitx5 -d --replace
+OnlyShowIn=niri;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

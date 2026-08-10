@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+LIST_DIR = Path(os.environ.get("BK_PACKAGE_LIST_DIR", "/usr/share/bk/package-lists"))
+
+
+def available_profiles() -> list[str]:
+    if not LIST_DIR.is_dir():
+        raise RuntimeError(f"package list directory is missing: {LIST_DIR}")
+    return sorted(path.name for path in LIST_DIR.iterdir() if path.is_file())
+
+
+def packages_for(profiles: list[str]) -> list[str]:
+    available = set(available_profiles())
+    unknown = [profile for profile in profiles if profile not in available]
+    if unknown:
+        raise ValueError("unknown profile: " + ", ".join(unknown))
+
+    packages: list[str] = []
+    seen: set[str] = set()
+    for profile in profiles:
+        for raw_line in (LIST_DIR / profile).read_text(encoding="utf-8").splitlines():
+            package = raw_line.partition("#")[0].strip()
+            if package and package not in seen:
+                seen.add(package)
+                packages.append(package)
+    return packages
+
+
+def install_packages(packages: list[str]) -> int:
+    if not packages:
+        return 0
+    command = ["pacman", "-S", "--needed", "--", *packages]
+    if os.geteuid() != 0:
+        sudo = shutil.which("sudo")
+        if not sudo:
+            raise RuntimeError("--install requires root or sudo")
+        command.insert(0, sudo)
+    return subprocess.run(command, check=False).returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="List or install packages from BK distribution profiles"
+    )
+    parser.add_argument("profile", nargs="*", help="one or more profile names")
+    parser.add_argument("--list", action="store_true", help="list available profiles")
+    parser.add_argument(
+        "--install", action="store_true", help="install with pacman --needed"
+    )
+    args = parser.parse_args()
+
+    try:
+        if args.list:
+            print("\n".join(available_profiles()))
+            return 0
+        if not args.profile:
+            parser.error("at least one profile is required")
+        packages = packages_for(args.profile)
+        if args.install:
+            return install_packages(packages)
+        print("\n".join(packages))
+        return 0
+    except (OSError, RuntimeError, ValueError) as error:
+        print(f"bk-packagelist: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

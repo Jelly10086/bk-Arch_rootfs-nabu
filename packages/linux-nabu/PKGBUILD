@@ -1,0 +1,110 @@
+# Packaging structure retained from Kumar-Jy/nabu-pkgs.
+pkgbase=linux-nabu
+pkgname=('linux-nabu' 'linux-nabu-headers')
+pkgver=6.18.42.bkb26810
+pkgrel=1
+pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
+arch=('aarch64')
+url="https://github.com/TwinbornPlate75/linux-nabu"
+license=('GPL-2.0-only')
+makedepends=('bc' 'cpio' 'dtc' 'git' 'inetutils' 'kmod' 'libelf' 'pahole' 'python')
+options=('!strip')
+_srcname=linux-nabu
+_commit=bf584639297f67a855ac14a381c18576b7c77843
+_kernelrelease=6.18.42-nabu-bkb26810
+_dtbfile=qcom/sm8150-xiaomi-nabu.dtb
+source=("$_srcname::git+$url.git#commit=$_commit" 'bk-sandbox.config')
+sha256sums=('SKIP'
+            'SKIP')
+
+prepare() {
+  cd "$srcdir/$_srcname"
+  find . -maxdepth 1 -type f -name 'localversion*' -delete
+  printf '%s\n' '-nabu-bkb26810' >localversion.20-bk
+
+  make ARCH=arm64 defconfig
+  cat arch/arm64/configs/sm8150.config "$srcdir/bk-sandbox.config" >>.config
+  scripts/config --disable LOCALVERSION_AUTO
+  scripts/config --set-str LOCALVERSION ''
+  make ARCH=arm64 olddefconfig
+
+  local actual
+  actual=$(make -s ARCH=arm64 kernelrelease)
+  [[ $actual == "$_kernelrelease" ]] || {
+    printf 'kernel release mismatch: expected %s, got %s\n' "$_kernelrelease" "$actual" >&2
+    return 1
+  }
+}
+
+build() {
+  cd "$srcdir/$_srcname"
+  make ARCH=arm64 prepare
+  make -s ARCH=arm64 kernelrelease >version
+  unset LDFLAGS
+  make ${MAKEFLAGS} ARCH=arm64 Image Image.gz modules
+  make ${MAKEFLAGS} ARCH=arm64 DTC_FLAGS='-@' dtbs
+}
+
+_package_common() {
+  local kernver
+  kernver=$(<version)
+  [[ $kernver == "$_kernelrelease" ]] || return 1
+
+  install -Dm644 arch/arm64/boot/Image "$pkgdir/boot/vmlinux-$kernver"
+  install -Dm644 arch/arm64/boot/Image.gz "$pkgdir/boot/vmlinuz-$kernver"
+  install -Dm644 "arch/arm64/boot/dts/$_dtbfile" "$pkgdir/boot/dtb-$kernver"
+  install -Dm644 .config "$pkgdir/boot/config-$kernver"
+  ln -s "vmlinux-$kernver" "$pkgdir/boot/vmlinux-linux-nabu"
+  ln -s "vmlinuz-$kernver" "$pkgdir/boot/vmlinuz-linux-nabu"
+  ln -s "dtb-$kernver" "$pkgdir/boot/dtb-linux-nabu"
+
+  make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
+    DEPMOD=/doesntexist modules_install
+  rm -f "$pkgdir/usr/lib/modules/$kernver/build" \
+    "$pkgdir/usr/lib/modules/$kernver/source"
+}
+
+package_linux-nabu() {
+  pkgdesc="Linux 6.18 kernel and modules for Xiaomi Pad 5 (nabu)"
+  depends=('coreutils' 'kmod' 'linux-firmware' 'mkinitcpio>=0.7' 'systemd-ukify')
+  optdepends=('wireless-regdb: set the wireless regulatory domain')
+  provides=("linux=$pkgver")
+  conflicts=('linux')
+  install=linux-nabu.install
+
+  cd "$srcdir/$_srcname"
+  _package_common
+  install -Dm644 /dev/stdin "$pkgdir/etc/mkinitcpio.d/linux-nabu.preset" <<EOF
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-nabu"
+PRESETS=('default')
+default_uki="/boot/efi/EFI/arch/arch-linux-nabu.efi"
+default_cmdline="/etc/cmdline.d/root.conf"
+EOF
+}
+
+package_linux-nabu-headers() {
+  pkgdesc="Headers and scripts for the BK linux-nabu kernel"
+  provides=("linux-headers=$pkgver")
+  conflicts=('linux-headers')
+
+  cd "$srcdir/$_srcname"
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
+    localversion.* version vmlinux
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
+  cp -t "$builddir" -a scripts include
+  cp -t "$builddir/arch/arm64" -a arch/arm64/include
+  install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
+  mkdir -p "$builddir/arch/arm"
+  cp -t "$builddir/arch/arm" -a arch/arm/include
+
+  while IFS= read -r -d '' file; do
+    install -Dm644 "$file" "$builddir/$file"
+  done < <(find . -name 'Kconfig*' -print0)
+  find -L "$builddir" -type l -delete
+  find "$builddir" -type f -name '*.o' -delete
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+}

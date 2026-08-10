@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+git_cache="$project_dir/cache/sources/git"
+mkdir -p "$git_cache" "$project_dir/cache/sources/fonts" \
+  "$project_dir/cache/sources/firmware" "$project_dir/cache/sources/nabu-repo"
+
+fetch_git() {
+  local name=$1 url=$2 commit=$3 destination="$git_cache/$1"
+  if [[ ! -d $destination/.git ]]; then
+    git clone --filter=blob:none --no-checkout "$url" "$destination"
+  fi
+  git -C "$destination" fetch --depth=1 origin "$commit"
+  git -C "$destination" checkout --detach "$commit"
+  [[ $(git -C "$destination" rev-parse HEAD) == "$commit" ]]
+}
+
+fetch_git nabu-arch-images https://github.com/Kumar-Jy/Nabu-arch-images.git \
+  be0d285945d2b4c9e768df1a0aaa0b0887dc95b6
+fetch_git refind-tokyo-night https://github.com/almighty-loaf/rEFInd-tokyo-night.git \
+  19d243e19c79e82bedf413f3e28eba7c3469cc69
+
+noto="$project_dir/cache/sources/fonts/18_NotoSansSC.zip"
+if [[ ! -f $noto ]]; then
+  curl -fL --retry 3 -o "$noto.part" \
+    https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip
+  mv "$noto.part" "$noto"
+fi
+printf '%s  %s\n' \
+  4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec \
+  "$noto" | sha256sum -c -
+
+fetch_archive() {
+  local filename=$1 hash=$2
+  local destination="$project_dir/cache/sources/nabu-repo/$filename"
+  if [[ ! -f $destination ]]; then
+    curl -fL --retry 3 -o "$destination.part" \
+      "https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo/$filename"
+    mv "$destination.part" "$destination"
+  fi
+  printf '%s  %s\n' "$hash" "$destination" | sha256sum -c -
+}
+
+fetch_archive linux-firmware-xiaomi-nabu-25.04.26-1-any.pkg.tar.xz \
+  bef43c32029902bc4c3c1b7c7007c6e5d954fe673933087a836b5a41b567bac9
+fetch_archive nabu-pmac-1-2-any.pkg.tar.xz \
+  9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6
+
+firmware_cache="$project_dir/cache/sources/firmware"
+if [[ ! -f $firmware_cache/SM8150_EFI_NOSB.fd || ! -f $firmware_cache/xiaomi-nabu_NOSB.img ]]; then
+  local_artifact="$project_dir/staging/uefi-project-aloha-run30522497322/SurfaceDuo1Pkg/ci_artifacts/xiaomi-nabu"
+  if [[ -d $local_artifact ]]; then
+    install -m644 "$local_artifact/SM8150_EFI_NOSB.fd" "$firmware_cache/"
+    install -m644 "$local_artifact/xiaomi-nabu_NOSB.img" "$firmware_cache/"
+  elif command -v gh >/dev/null; then
+    artifact_dir=$(mktemp -d)
+    gh run download 30522497322 -R Project-Aloha/mu_aloha_platforms \
+      -n SurfaceDuo1Pkg -D "$artifact_dir"
+    install -m644 "$artifact_dir/ci_artifacts/xiaomi-nabu/SM8150_EFI_NOSB.fd" \
+      "$firmware_cache/"
+    install -m644 "$artifact_dir/ci_artifacts/xiaomi-nabu/xiaomi-nabu_NOSB.img" \
+      "$firmware_cache/"
+  else
+    echo 'NOSB firmware artifact is unavailable; build xiaomi-nabu from the pinned Project Aloha commit' >&2
+    exit 1
+  fi
+fi
+
+printf '%s  %s\n' \
+  7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab \
+  "$firmware_cache/SM8150_EFI_NOSB.fd" \
+  630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f \
+  "$firmware_cache/xiaomi-nabu_NOSB.img" | sha256sum -c -

@@ -1,0 +1,5 @@
+enable NetworkManager.service
+enable bluetooth.service
+enable greetd.service
+enable nabu-pmac.service
+enable rmtfs.service

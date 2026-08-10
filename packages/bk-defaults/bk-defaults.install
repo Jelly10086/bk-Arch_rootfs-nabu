@@ -1,0 +1,7 @@
+post_install() {
+  /usr/lib/bk/apply-defaults
+}
+
+post_upgrade() {
+  /usr/lib/bk/apply-defaults
+}

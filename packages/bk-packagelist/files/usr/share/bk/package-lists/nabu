@@ -1,0 +1,8 @@
+linux-nabu
+linux-firmware-qcom
+linux-firmware-xiaomi-nabu=25.04.26-1
+nabu-pmac=1-2
+qrtr
+rmtfs
+upower
+iio-sensor-proxy

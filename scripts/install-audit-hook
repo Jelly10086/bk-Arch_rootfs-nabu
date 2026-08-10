@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+hook="$project_dir/.git/hooks/pre-push"
+install -Dm755 /dev/stdin "$hook" <<'EOF'
+#!/usr/bin/env bash
+exec "$(git rev-parse --show-toplevel)/scripts/audit-public"
+EOF

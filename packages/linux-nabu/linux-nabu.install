@@ -1,0 +1,18 @@
+#!/bin/bash
+
+regenerate_uki() {
+  local kernver=6.18.42-nabu-bkb26810
+  [[ -f /boot/vmlinuz-$kernver ]] || return 0
+  mountpoint -q /boot/efi 2>/dev/null || return 0
+  install -d /etc/cmdline.d
+  printf 'root=PARTLABEL=linux rw\n' >/etc/cmdline.d/root.conf
+  mkinitcpio -P
+}
+
+post_install() {
+  regenerate_uki
+}
+
+post_upgrade() {
+  regenerate_uki
+}

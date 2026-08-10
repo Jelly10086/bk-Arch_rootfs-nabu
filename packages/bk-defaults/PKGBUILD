@@ -1,0 +1,53 @@
+pkgname=bk-defaults
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
+arch=('any')
+license=('GPL-3.0-or-later' 'OFL-1.1')
+depends=('fontconfig' 'noto-fonts-emoji' 'sudo' 'ttf-dejavu' 'zsh')
+install=bk-defaults.install
+backup=('etc/hostname' 'etc/sudoers.d/10-wheel')
+source=(
+  'Rubik.zip'
+  '18_NotoSansSC.zip::https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip'
+)
+sha256sums=(
+  '795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e'
+  '4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec'
+)
+
+package() {
+  install -d "$pkgdir"
+  cp -a "$startdir/files/." "$pkgdir/"
+
+  install -d "$pkgdir/etc/fonts/conf.d"
+  ln -s ../conf.avail/60-bk-fonts.conf \
+    "$pkgdir/etc/fonts/conf.d/60-bk-fonts.conf"
+
+  install -d "$pkgdir/usr/share/fonts/bk"
+  bsdtar -xOf "$srcdir/Rubik.zip" Rubik-VariableFont_wght.ttf \
+    >"$pkgdir/usr/share/fonts/bk/Rubik-VariableFont_wght.ttf"
+  bsdtar -xOf "$srcdir/Rubik.zip" Rubik-Italic-VariableFont_wght.ttf \
+    >"$pkgdir/usr/share/fonts/bk/Rubik-Italic-VariableFont_wght.ttf"
+  chmod 0644 "$pkgdir/usr/share/fonts/bk/"*.ttf
+
+  bsdtar -xf "$srcdir/18_NotoSansSC.zip" -C "$pkgdir/usr/share/fonts/bk" \
+    NotoSansSC-Regular.otf NotoSansSC-Medium.otf NotoSansSC-Bold.otf
+  chmod 0644 "$pkgdir/usr/share/fonts/bk/"*.otf
+
+  install -d "$pkgdir/usr/share/licenses/$pkgname"
+  bsdtar -xOf "$srcdir/Rubik.zip" OFL.txt \
+    >"$pkgdir/usr/share/licenses/$pkgname/Rubik-OFL.txt"
+  bsdtar -xOf "$srcdir/18_NotoSansSC.zip" LICENSE \
+    >"$pkgdir/usr/share/licenses/$pkgname/Noto-Sans-SC-OFL.txt"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/bk/build-info" <<EOF
+distro.commit=${BK_DISTRO_COMMIT:-unknown}
+shell.commit=${BK_SHELL_COMMIT:-90ef69f87ebd127da7b7fb06ec0b12cb09276e94}
+kernel.source=bf584639297f67a855ac14a381c18576b7c77843
+kernel.release=6.18.42-nabu-bkb26810
+font.rubik.sha256=795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e
+font.noto_sans_sc.sha256=4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec
+mkosi.version=${BK_MKOSI_VERSION:-26}
+EOF
+}

@@ -1,0 +1,6 @@
+NAME="XiaomiPad5"
+PRETTY_NAME="XiaomiPad5"
+ID=xiaomipad5
+ID_LIKE=arch
+VERSION_ID="1"
+ANSI_COLOR="38;2;122;162;247"

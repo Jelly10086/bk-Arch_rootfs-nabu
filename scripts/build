@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+profile=release
+clean=0
+public_build=0
+
+while (($#)); do
+  case $1 in
+    --profile)
+      profile=${2:?--profile requires base, dev or release}
+      shift 2
+      ;;
+    --clean)
+      clean=1
+      shift
+      ;;
+    --public)
+      public_build=1
+      shift
+      ;;
+    *)
+      echo "unknown option: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+[[ -f $project_dir/profiles/$profile/packages ]] || {
+  echo "unknown profile: $profile" >&2
+  exit 2
+}
+
+if [[ $public_build == 1 ]]; then
+  "$project_dir/scripts/audit-public"
+  [[ ! -e $project_dir/local-overrides/rootfs ]] || {
+    echo 'public builds require a checkout without local-overrides/rootfs' >&2
+    exit 1
+  }
+fi
+
+if [[ $clean == 1 ]]; then
+  for target in \
+    "$project_dir/build/makepkg" \
+    "$project_dir/build/mkosi-workspace" \
+    "$project_dir/output/bk-nabu-rootfs" \
+    "$project_dir/output/esp" \
+    "$project_dir/output/packages"; do
+    case $target in
+      "$project_dir"/build/*|"$project_dir"/output/*) rm -rf -- "$target" ;;
+      *) echo "unsafe clean target: $target" >&2; exit 1 ;;
+    esac
+  done
+fi
+
+"$project_dir/scripts/fetch-sources"
+"$project_dir/scripts/build-packages"
+BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/build-rootfs" "$profile"
+"$project_dir/scripts/build-artifacts"
+"$project_dir/scripts/write-report" "$profile"
+
+(
+  cd "$project_dir/output"
+  find packages -maxdepth 1 -type f \( -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz' \) -print \
+    | LC_ALL=C sort >../build/checksum-files
+  printf '%s\n' \
+    arch-linux-nabu.efi \
+    bk-nabu-rootfs.img \
+    firmware/SM8150_EFI_NOSB.fd \
+    firmware/xiaomi-nabu_NOSB.img \
+    >>../build/checksum-files
+  xargs -d '\n' sha256sum <../build/checksum-files >SHA256SUMS
+)
+
+"$project_dir/scripts/verify"
+if [[ $public_build == 1 ]]; then
+  "$project_dir/scripts/audit-public" --artifacts
+fi

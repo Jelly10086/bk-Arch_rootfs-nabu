@@ -1,0 +1,23 @@
+pkgname=bk-log
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Redacting diagnostics collector for BK nabu"
+arch=('any')
+url="https://github.com/endeavouros-team/PKGBUILDS/tree/master/eos-log-tool"
+license=('GPL-3.0-or-later')
+depends=('bash' 'coreutils' 'findutils' 'gawk' 'gnused' 'libarchive' 'zstd')
+optdepends=(
+  'bluez-utils: Bluetooth diagnostics'
+  'brightnessctl: backlight diagnostics'
+  'iproute2: network diagnostics'
+  'networkmanager: Wi-Fi diagnostics'
+  'pipewire: audio diagnostics'
+  'upower: battery diagnostics'
+  'usbutils: USB diagnostics'
+)
+source=()
+sha256sums=()
+
+package() {
+  install -Dm755 "$startdir/files/usr/bin/bk-log" "$pkgdir/usr/bin/bk-log"
+}

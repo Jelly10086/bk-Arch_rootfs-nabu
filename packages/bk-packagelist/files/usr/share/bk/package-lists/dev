@@ -1,0 +1,14 @@
+gcc
+clang
+cmake
+ninja
+meson
+gdb
+strace
+go
+rust
+python
+linux-nabu-headers
+openssh
+git
+pkgconf
