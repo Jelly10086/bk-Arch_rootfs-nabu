@@ -1,6 +1,5 @@
 # Arch Linux ARM userspace
 base
-base-devel
 sudo
 zsh
 mkinitcpio

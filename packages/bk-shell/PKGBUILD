@@ -60,8 +60,8 @@ package_bk-shell() {
   install -Dm755 "$srcdir/stage/usr/bin/bk-shell" "$pkgdir/usr/bin/bk-shell"
   install -Dm755 "$srcdir/stage/usr/bin/bk-shell-stock" "$pkgdir/usr/bin/bk-shell-stock"
   install -d "$pkgdir/usr/share/quickshell"
-  cp -a "$srcdir/stage/usr/share/quickshell/bk-shell" "$pkgdir/usr/share/quickshell/"
-  cp -a "$srcdir/stage/usr/share/quickshell/dms-stock" "$pkgdir/usr/share/quickshell/"
+  cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/bk-shell" "$pkgdir/usr/share/quickshell/"
+  cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/dms-stock" "$pkgdir/usr/share/quickshell/"
   rm -rf "$pkgdir/usr/share/quickshell/bk-shell/Bk/Keyboard"
   install -Dm644 "$srcdir/stage/usr/lib/systemd/user/bk-shell.service" \
     "$pkgdir/usr/lib/systemd/user/bk-shell.service"
@@ -79,9 +79,9 @@ package_bk-keyboard() {
   install -Dm755 "$srcdir/stage/usr/bin/bk-keyboard" "$pkgdir/usr/bin/bk-keyboard"
   install -d "$pkgdir/usr/share/quickshell/bk-shell/Bk" \
     "$pkgdir/usr/share/quickshell/bk-greeter/Bk"
-  cp -a "$srcdir/stage/usr/share/quickshell/bk-shell/Bk/Keyboard" \
+  cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/bk-shell/Bk/Keyboard" \
     "$pkgdir/usr/share/quickshell/bk-shell/Bk/"
-  cp -a "$srcdir/stage/usr/share/quickshell/bk-greeter/Bk/Keyboard" \
+  cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/bk-greeter/Bk/Keyboard" \
     "$pkgdir/usr/share/quickshell/bk-greeter/Bk/"
   install -Dm644 "$_shell_source/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
@@ -94,7 +94,7 @@ package_bk-greeter() {
   install -Dm755 "$srcdir/stage/usr/bin/dms-greeter" "$pkgdir/usr/bin/dms-greeter"
   install -Dm755 "$srcdir/stage/usr/bin/bk-greeter" "$pkgdir/usr/bin/bk-greeter"
   install -d "$pkgdir/usr/share/quickshell"
-  cp -a "$srcdir/stage/usr/share/quickshell/bk-greeter" "$pkgdir/usr/share/quickshell/"
+  cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/bk-greeter" "$pkgdir/usr/share/quickshell/"
   rm -rf "$pkgdir/usr/share/quickshell/bk-greeter/Bk/Keyboard"
   install -Dm644 "$srcdir/stage/etc/greetd/config.toml" "$pkgdir/etc/greetd/config.toml"
   install -Dm644 "$srcdir/stage/usr/share/bk-greeter/niri.kdl" \

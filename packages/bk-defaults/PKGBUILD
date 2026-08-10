@@ -18,7 +18,7 @@ sha256sums=(
 
 package() {
   install -d "$pkgdir"
-  cp -a "$startdir/files/." "$pkgdir/"
+  cp -a --no-preserve=ownership "$startdir/files/." "$pkgdir/"
 
   install -d "$pkgdir/etc/fonts/conf.d"
   ln -s ../conf.avail/60-bk-fonts.conf \

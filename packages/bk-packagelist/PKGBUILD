@@ -1,6 +1,6 @@
 pkgname=bk-packagelist
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="BK distribution package profile manager"
 arch=('any')
 url="https://github.com/endeavouros-team/PKGBUILDS/tree/master/eos-packagelist"
