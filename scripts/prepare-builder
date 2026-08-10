@@ -4,6 +4,7 @@ set -euo pipefail
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
 builder_root=${BK_BUILDER_ROOT:-"$project_dir/build/builder-root"}
 rootfs_archive="$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz"
+host_resolv=$(readlink -f /etc/resolv.conf)
 
 if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
   [[ -f $rootfs_archive ]] || {
@@ -21,7 +22,8 @@ if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
     --no-xattrs --no-acls --no-fflags
 fi
 
-mkdir -p "$builder_root/workspace" "$builder_root/mnt"
+mkdir -p "$builder_root/workspace" "$builder_root/mnt" \
+  "$builder_root/run/systemd/resolve"
 
 bwrap \
   --unshare-user --uid 0 --gid 0 \
@@ -29,7 +31,7 @@ bwrap \
   --die-with-parent \
   --bind "$builder_root" / \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --ro-bind /run/systemd/resolve/resolv.conf /run/systemd/resolve/resolv.conf \
+  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
   --setenv HOME /root \
   /usr/bin/bash -lc '
     if [[ ! -s /etc/pacman.d/gnupg/pubring.gpg ]]; then
