@@ -45,7 +45,13 @@ if [[ $clean == 1 ]]; then
     "$project_dir/build/makepkg" \
     "$project_dir/build/mkosi-workspace" \
     "$project_dir/output/bk-nabu-rootfs" \
+    "$project_dir/output/bk-nabu-rootfs.img" \
     "$project_dir/output/esp" \
+    "$project_dir/output/esp.img" \
+    "$project_dir/output/arch-linux-nabu.efi" \
+    "$project_dir/output/BUILD-REPORT.md" \
+    "$project_dir/output/SHA256SUMS" \
+    "$project_dir/output/firmware" \
     "$project_dir/output/packages"; do
     case $target in
       "$project_dir"/build/*|"$project_dir"/output/*) rm -rf -- "$target" ;;
