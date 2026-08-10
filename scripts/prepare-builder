@@ -17,7 +17,8 @@ if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
   rm -rf -- "$builder_root"
   mkdir -p "$builder_root"
   # A rootless user namespace cannot restore security.capability xattrs.
-  bsdtar --no-xattrs -xpf "$rootfs_archive" -C "$builder_root"
+  bsdtar -xf "$rootfs_archive" -C "$builder_root" \
+    --no-xattrs --no-acls --no-fflags
 fi
 
 mkdir -p "$builder_root/workspace" "$builder_root/mnt"
