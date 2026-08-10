@@ -111,11 +111,11 @@ package_linux-nabu-headers() {
     localversion.* version vmlinux
   install -Dt "$builddir/kernel" -m644 kernel/Makefile
   install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
-  cp -t "$builddir" -a scripts include
-  cp -t "$builddir/arch/arm64" -a arch/arm64/include
+  cp -t "$builddir" -a --no-preserve=ownership scripts include
+  cp -t "$builddir/arch/arm64" -a --no-preserve=ownership arch/arm64/include
   install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
   mkdir -p "$builddir/arch/arm"
-  cp -t "$builddir/arch/arm" -a arch/arm/include
+  cp -t "$builddir/arch/arm" -a --no-preserve=ownership arch/arm/include
 
   while IFS= read -r -d '' file; do
     install -Dm644 "$file" "$builddir/$file"
