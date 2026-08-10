@@ -5,6 +5,7 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd)
 profile=${1:-release}
 public_build=${BK_PUBLIC_BUILD:-0}
 rootfs="$project_dir/output/bk-nabu-rootfs"
+host_resolv=$(readlink -f /etc/resolv.conf)
 repo_dir="$project_dir/output/packages"
 profile_file="$project_dir/profiles/$profile/packages"
 list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
@@ -14,6 +15,7 @@ list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
 
 mkosi --directory="$project_dir/image" --profile="$profile" --force build
 mkdir -p "$rootfs/mnt" "$rootfs/boot/efi/EFI/arch"
+mkdir -p "$rootfs/run/systemd/resolve"
 
 mapfile -t package_profiles <"$profile_file"
 mapfile -t packages < <(
@@ -39,6 +41,7 @@ bwrap \
   --die-with-parent \
   --bind "$rootfs" / \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
   --ro-bind "$repo_dir" /mnt \
   --setenv HOME /root \
   /usr/bin/pacman --config /etc/pacman-bk.conf \
@@ -55,6 +58,7 @@ bwrap \
   --die-with-parent \
   --bind "$rootfs" / \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
   --setenv HOME /root \
   /usr/bin/bash -lc 'fc-cache -f; systemd-tmpfiles --create; mkinitcpio -p linux-nabu'
 
