@@ -11,6 +11,7 @@ distro_commit=$(git -C "$project_dir" rev-parse HEAD)
 shell_commit=$(git -C "$shell_dir" rev-parse HEAD)
 
 mkdir -p "$package_output" "$project_dir/cache/sources/makepkg" \
+  "$project_dir/cache/go/build" "$project_dir/cache/go/pkg/mod" \
   "$project_dir/build/makepkg" "$project_dir/logs/makepkg"
 
 build_one() {
@@ -29,7 +30,9 @@ build_one() {
     --setenv SRCDEST /workspace/bk-Arch_nabu/cache/sources/makepkg \
     --setenv BUILDDIR /workspace/bk-Arch_nabu/build/makepkg \
     --setenv LOGDEST /workspace/bk-Arch_nabu/logs/makepkg \
-    --setenv PACKAGER 'BK nabu build' \
+    --setenv GOCACHE /workspace/bk-Arch_nabu/cache/go/build \
+    --setenv GOMODCACHE /workspace/bk-Arch_nabu/cache/go/pkg/mod \
+    --setenv PACKAGER 'BK nabu build <noreply@localhost>' \
     --setenv MAKEFLAGS "-j$(nproc)" \
     --setenv BK_SHELL_SOURCE /workspace/bk-shell \
     --setenv BK_DISTRO_COMMIT "$distro_commit" \
@@ -40,7 +43,11 @@ build_one() {
 }
 
 all_packages=(bk-packagelist bk-log bk-defaults bk-shell yay linux-nabu)
-packages_to_build=("${@:-${all_packages[@]}}")
+if (($#)); then
+  packages_to_build=("$@")
+else
+  packages_to_build=("${all_packages[@]}")
+fi
 
 for package_dir in "${packages_to_build[@]}"; do
   case " ${all_packages[*]} " in
@@ -52,9 +59,18 @@ done
 
 install -m644 "$project_dir/cache/sources/nabu-repo/"*.pkg.tar.xz "$package_output/"
 
-repo-add -R "$package_output/bk.db.tar.zst" \
-  "$package_output"/*.pkg.tar.zst "$package_output"/*.pkg.tar.xz
+bwrap \
+  --unshare-user --uid 1000 --gid 1000 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$builder_root" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --bind "$workspace_parent" /workspace \
+  --chdir /workspace/bk-Arch_nabu/output/packages \
+  /usr/bin/bash -lc \
+    'shopt -s nullglob; packages=(./*.pkg.tar.zst ./*.pkg.tar.xz); repo-add -R bk.db.tar.zst "${packages[@]}"'
 (
   cd "$package_output"
-  sha256sum -- *.pkg.tar.zst *.pkg.tar.xz >SHA256SUMS
+  find . -maxdepth 1 -type f \( -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz' \) \
+    -printf '%f\0' | LC_ALL=C sort -z | xargs -0 sha256sum -- >SHA256SUMS
 )

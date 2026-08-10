@@ -37,6 +37,8 @@ bwrap \
   '
 
 e2fsck -fn "$project_dir/output/bk-nabu-rootfs.img"
+[[ $(tune2fs -l "$project_dir/output/bk-nabu-rootfs.img" | awk -F: \
+  '$1 == "Filesystem volume name" { gsub(/^[[:space:]]+/, "", $2); print $2 }') == linux ]]
 (
   cd "$project_dir/output"
   sha256sum -c SHA256SUMS
