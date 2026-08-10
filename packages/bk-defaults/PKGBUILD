@@ -1,12 +1,12 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=4
+pkgrel=5
 pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
 depends=('fontconfig' 'noto-fonts-emoji' 'sudo' 'ttf-dejavu' 'zsh')
 install=bk-defaults.install
-backup=('etc/hostname' 'etc/sudoers.d/10-wheel')
+backup=('etc/fstab' 'etc/hostname' 'etc/sudoers.d/10-wheel')
 source=(
   'Rubik.zip'
   '18_NotoSansSC.zip::https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip'

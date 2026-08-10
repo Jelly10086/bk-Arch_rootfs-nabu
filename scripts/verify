@@ -5,11 +5,20 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd)
 rootfs="$project_dir/output/bk-nabu-rootfs"
 uki="$project_dir/output/arch-linux-nabu.efi"
 expected_release=6.18.42-nabu-bkb26810
+if [[ ${BK_PUBLIC_BUILD:-0} == 1 ]]; then
+  expected_cjk_path=/usr/share/fonts/bk/NotoSansSC-Regular.otf
+else
+  expected_cjk_path=/usr/share/fonts/local/cjk-regular.ttf
+fi
 
 [[ $(<"$rootfs/etc/hostname") == mipad5 ]]
 grep -qx 'NAME="XiaomiPad5"' "$rootfs/etc/os-release"
 grep -qx 'PRETTY_NAME="XiaomiPad5"' "$rootfs/etc/os-release"
 grep -qx 'ID=xiaomipad5' "$rootfs/etc/os-release"
+grep -qx 'PARTLABEL=linux  /          ext4  rw,errors=remount-ro,x-systemd.growfs  0 1' \
+  "$rootfs/etc/fstab"
+grep -qx 'PARTLABEL=esp    /boot/efi  vfat  rw,umask=0077                         0 2' \
+  "$rootfs/etc/fstab"
 [[ -d $rootfs/usr/lib/modules/$expected_release ]]
 [[ -f $rootfs/boot/vmlinuz-$expected_release ]]
 [[ -f $rootfs/boot/dtb-$expected_release ]]
@@ -25,20 +34,33 @@ bwrap \
   --die-with-parent \
   --ro-bind "$rootfs" / \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --setenv BK_CJK_PATH "$expected_cjk_path" \
   /usr/bin/bash -lc '
     test "$(id -u unkn0wn)" = 1000
     test "$(getent passwd unkn0wn | cut -d: -f5)" = Unkn0wn
     test "$(getent passwd unkn0wn | cut -d: -f7)" = /bin/zsh
     passwd -S root | grep -q "^root L"
-    pacman -Qkk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu
+    id -nG unkn0wn | tr " " "\n" | grep -qx wheel
+    pacman -Qkk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu yay
     test -x /usr/bin/dms
     dms version | grep -q "0.1.0-bk"
     dms keyboard --help | grep -q "type"
+    fc-match -f "%{family}\n" Rubik | grep -q Rubik
+    test "$(fc-match -f "%{file}" :lang=zh)" = "$BK_CJK_PATH"
+    fc-match -f "%{family}\n" emoji | grep -q "Noto Color Emoji"
+    test "$(fc-match -f "%{family}\n" monospace)" != Rubik
   '
+
+for service in NetworkManager bluetooth greetd nabu-pmac rmtfs; do
+  systemctl --root="$rootfs" is-enabled "$service.service" >/dev/null
+done
 
 e2fsck -fn "$project_dir/output/bk-nabu-rootfs.img"
 [[ $(tune2fs -l "$project_dir/output/bk-nabu-rootfs.img" | awk -F: \
   '$1 == "Filesystem volume name" { gsub(/^[[:space:]]+/, "", $2); print $2 }') == linux ]]
+fsck.fat -vn "$project_dir/output/esp.img"
+mtype -i "$project_dir/output/esp.img" ::/EFI/BOOT/refind.conf \
+  | grep -q '^include themes/rEFInd-tokyo-night/theme.conf$'
 (
   cd "$project_dir/output"
   sha256sum -c SHA256SUMS

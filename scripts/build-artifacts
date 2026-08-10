@@ -42,3 +42,9 @@ mkfs.ext4 -F -L linux -d "$rootfs" "$rootfs_image"
 e2fsck -fn "$rootfs_image"
 
 grep -q '^include themes/rEFInd-tokyo-night/theme.conf$' "$esp/EFI/BOOT/refind.conf"
+
+esp_image="$project_dir/output/esp.img"
+truncate -s 350M "$esp_image"
+mkfs.fat -F32 -n ESPNABU "$esp_image"
+mcopy -s -i "$esp_image" "$esp"/* ::
+fsck.fat -vn "$esp_image"

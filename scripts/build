@@ -67,13 +67,14 @@ BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/build-rootfs" "$profile"
   printf '%s\n' \
     arch-linux-nabu.efi \
     bk-nabu-rootfs.img \
+    esp.img \
     firmware/SM8150_EFI_NOSB.fd \
     firmware/xiaomi-nabu_NOSB.img \
     >>../build/checksum-files
   xargs -d '\n' sha256sum <../build/checksum-files >SHA256SUMS
 )
 
-"$project_dir/scripts/verify"
+BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/verify"
 if [[ $public_build == 1 ]]; then
   "$project_dir/scripts/audit-public" --artifacts
 fi
