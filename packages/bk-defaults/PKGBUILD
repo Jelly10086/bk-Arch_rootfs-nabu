@@ -1,6 +1,6 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=5
+pkgrel=6
 pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
