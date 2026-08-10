@@ -31,8 +31,14 @@ bwrap \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
   --ro-bind /run/systemd/resolve/resolv.conf /run/systemd/resolve/resolv.conf \
   --setenv HOME /root \
-  /usr/bin/pacman -Syu --needed --noconfirm --disable-sandbox \
-    base-devel bc cmake cpio dtc gettext git go inetutils kmod libelf \
-    ninja pahole patch python >&2
+  /usr/bin/bash -lc '
+    if [[ ! -s /etc/pacman.d/gnupg/pubring.gpg ]]; then
+      pacman-key --init
+      pacman-key --populate archlinuxarm
+    fi
+    exec pacman -Syu --needed --noconfirm --disable-sandbox \
+      base-devel bc cmake cpio dtc gettext git go inetutils kmod libelf \
+      ninja pahole patch python
+  ' >&2
 
 printf '%s\n' "$builder_root"
