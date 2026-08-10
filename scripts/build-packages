@@ -35,6 +35,7 @@ build_one() {
     --setenv PACKAGER 'BK nabu build <noreply@localhost>' \
     --setenv MAKEFLAGS "-j$(nproc)" \
     --setenv BK_SHELL_SOURCE /workspace/bk-shell \
+    --setenv BK_LINUX_SOURCE /workspace/bk-Arch_nabu/cache/sources/git/linux-nabu \
     --setenv BK_DISTRO_COMMIT "$distro_commit" \
     --setenv BK_SHELL_COMMIT "$shell_commit" \
     --setenv BK_MKOSI_VERSION "$mkosi_version" \

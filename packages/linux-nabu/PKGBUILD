@@ -13,11 +13,28 @@ _srcname=linux-nabu
 _commit=bf584639297f67a855ac14a381c18576b7c77843
 _kernelrelease=6.18.42-nabu-bkb26810
 _dtbfile=qcom/sm8150-xiaomi-nabu.dtb
-source=("$_srcname::git+$url.git#commit=$_commit" 'bk-sandbox.config')
-sha256sums=('SKIP'
-            'SKIP')
+source=('bk-sandbox.config')
+sha256sums=('SKIP')
+_linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
 prepare() {
+  [[ -d $_linux_source/.git ]] || {
+    printf 'linux-nabu checkout not found: %s\n' "$_linux_source" >&2
+    return 1
+  }
+  local source_commit
+  source_commit=$(git -C "$_linux_source" rev-parse HEAD)
+  [[ $source_commit == "$_commit" ]] || {
+    printf 'linux-nabu commit mismatch: expected %s, got %s\n' \
+      "$_commit" "$source_commit" >&2
+    return 1
+  }
+
+  rm -rf "$srcdir/$_srcname"
+  cp -a --reflink=auto --no-preserve=ownership \
+    "$_linux_source" "$srcdir/$_srcname"
+  rm -rf "$srcdir/$_srcname/.git"
+
   cd "$srcdir/$_srcname"
   find . -maxdepth 1 -type f -name 'localversion*' -delete
   printf '%s\n' '-nabu-bkb26810' >localversion.20-bk

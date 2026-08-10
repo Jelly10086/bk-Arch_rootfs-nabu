@@ -9,13 +9,17 @@ mkdir -p "$git_cache" "$project_dir/cache/sources/fonts" \
 fetch_git() {
   local name=$1 url=$2 commit=$3 destination="$git_cache/$1"
   if [[ ! -d $destination/.git ]]; then
-    git clone --filter=blob:none --no-checkout "$url" "$destination"
+    mkdir -p "$destination"
+    git -C "$destination" init
+    git -C "$destination" remote add origin "$url"
   fi
   git -C "$destination" fetch --depth=1 origin "$commit"
   git -C "$destination" checkout --detach "$commit"
   [[ $(git -C "$destination" rev-parse HEAD) == "$commit" ]]
 }
 
+fetch_git linux-nabu https://github.com/TwinbornPlate75/linux-nabu.git \
+  bf584639297f67a855ac14a381c18576b7c77843
 fetch_git nabu-arch-images https://github.com/Kumar-Jy/Nabu-arch-images.git \
   be0d285945d2b4c9e768df1a0aaa0b0887dc95b6
 fetch_git refind-tokyo-night https://github.com/almighty-loaf/rEFInd-tokyo-night.git \
