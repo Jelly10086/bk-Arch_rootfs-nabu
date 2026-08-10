@@ -16,7 +16,8 @@ if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
   esac
   rm -rf -- "$builder_root"
   mkdir -p "$builder_root"
-  bsdtar -xpf "$rootfs_archive" -C "$builder_root"
+  # A rootless user namespace cannot restore security.capability xattrs.
+  bsdtar --no-xattrs -xpf "$rootfs_archive" -C "$builder_root"
 fi
 
 mkdir -p "$builder_root/workspace" "$builder_root/mnt"
