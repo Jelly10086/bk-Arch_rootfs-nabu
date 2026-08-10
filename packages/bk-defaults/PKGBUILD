@@ -31,8 +31,11 @@ package() {
     >"$pkgdir/usr/share/fonts/bk/Rubik-Italic-VariableFont_wght.ttf"
   chmod 0644 "$pkgdir/usr/share/fonts/bk/"*.ttf
 
-  bsdtar -xf "$srcdir/18_NotoSansSC.zip" -C "$pkgdir/usr/share/fonts/bk" \
-    NotoSansSC-Regular.otf NotoSansSC-Medium.otf NotoSansSC-Bold.otf
+  local font
+  for font in NotoSansSC-Regular.otf NotoSansSC-Medium.otf NotoSansSC-Bold.otf; do
+    bsdtar -xOf "$srcdir/18_NotoSansSC.zip" "$font" \
+      >"$pkgdir/usr/share/fonts/bk/$font"
+  done
   chmod 0644 "$pkgdir/usr/share/fonts/bk/"*.otf
 
   install -d "$pkgdir/usr/share/licenses/$pkgname"
