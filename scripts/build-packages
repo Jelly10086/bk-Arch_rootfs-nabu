@@ -39,7 +39,14 @@ build_one() {
     /usr/bin/bash -lc 'mkdir -p "$HOME"; exec makepkg --noconfirm --cleanbuild --clean --force --nodeps'
 }
 
-for package_dir in bk-packagelist bk-log bk-defaults bk-shell yay linux-nabu; do
+all_packages=(bk-packagelist bk-log bk-defaults bk-shell yay linux-nabu)
+packages_to_build=("${@:-${all_packages[@]}}")
+
+for package_dir in "${packages_to_build[@]}"; do
+  case " ${all_packages[*]} " in
+    *" $package_dir "*) ;;
+    *) printf 'unknown package: %s\n' "$package_dir" >&2; exit 2 ;;
+  esac
   build_one "$package_dir"
 done
 
