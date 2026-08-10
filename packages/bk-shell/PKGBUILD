@@ -1,7 +1,7 @@
 pkgbase=bk-shell
 pkgname=('bk-shell' 'bk-keyboard' 'bk-greeter')
 pkgver=0.1.0
-pkgrel=2
+pkgrel=3
 arch=('aarch64')
 url='https://github.com/AvengeMedia/DankMaterialShell'
 license=('GPL-3.0-only')
@@ -10,7 +10,7 @@ options=('!debug')
 source=()
 sha256sums=()
 
-_shell_commit=c3405dae06243ad5b48dcc23c09e7c4853cffb37
+_shell_commit=de5680a4da992e0beca052c5e151bcf0d829efb6
 _shell_source=${BK_SHELL_SOURCE:-"$startdir/../../../bk-shell"}
 
 prepare() {

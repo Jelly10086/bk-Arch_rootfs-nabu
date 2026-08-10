@@ -1,6 +1,6 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=2
+pkgrel=3
 pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
@@ -46,7 +46,7 @@ package() {
 
   install -Dm644 /dev/stdin "$pkgdir/usr/lib/bk/build-info" <<EOF
 distro.commit=${BK_DISTRO_COMMIT:-unknown}
-shell.commit=${BK_SHELL_COMMIT:-c3405dae06243ad5b48dcc23c09e7c4853cffb37}
+shell.commit=${BK_SHELL_COMMIT:-de5680a4da992e0beca052c5e151bcf0d829efb6}
 kernel.source=bf584639297f67a855ac14a381c18576b7c77843
 kernel.release=6.18.42-nabu-bkb26810
 font.rubik.sha256=795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e
