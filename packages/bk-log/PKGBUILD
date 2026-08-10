@@ -5,7 +5,7 @@ pkgdesc="Redacting diagnostics collector for BK nabu"
 arch=('any')
 url="https://github.com/endeavouros-team/PKGBUILDS/tree/master/eos-log-tool"
 license=('GPL-3.0-or-later')
-depends=('bash' 'coreutils' 'findutils' 'gawk' 'gnused' 'libarchive' 'zstd')
+depends=('bash' 'coreutils' 'findutils' 'gawk' 'sed' 'libarchive' 'zstd')
 optdepends=(
   'bluez-utils: Bluetooth diagnostics'
   'brightnessctl: backlight diagnostics'
