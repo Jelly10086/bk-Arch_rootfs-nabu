@@ -28,13 +28,8 @@ ukify inspect "$uki" | grep -A5 '^\.uname:' | grep -qx "    $expected_release"
 ukify inspect "$uki" | grep -q '^\.dtb:'
 ukify inspect "$uki" | grep -q '^\.initrd:'
 
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --ro-bind "$rootfs" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --setenv BK_CJK_PATH "$expected_cjk_path" \
+systemd-nspawn --quiet --directory="$rootfs" --register=no \
+  --setenv=BK_CJK_PATH="$expected_cjk_path" \
   /usr/bin/bash -lc '
     test "$(id -u unkn0wn)" = 1000
     test "$(getent passwd unkn0wn | cut -d: -f5)" = Unkn0wn

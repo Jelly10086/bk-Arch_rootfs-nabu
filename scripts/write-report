@@ -8,9 +8,7 @@ profile=${1:-release}
 distro_commit=$(git -C "$project_dir" rev-parse HEAD)
 shell_commit=$(git -C "$(dirname "$project_dir")/bk-shell" rev-parse HEAD)
 
-packages=$(bwrap \
-  --unshare-user --uid 0 --gid 0 --unshare-pid --unshare-uts --unshare-ipc \
-  --die-with-parent --ro-bind "$rootfs" / --proc /proc --dev /dev --tmpfs /tmp \
+packages=$(systemd-nspawn --quiet --directory="$rootfs" --register=no \
   /usr/bin/pacman -Q | LC_ALL=C sort)
 
 {
