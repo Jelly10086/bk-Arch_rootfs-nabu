@@ -35,6 +35,25 @@ printf '\n%s\n' \
   'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   >>"$pacman_config"
 
+# The BaseTree kernel is also selected by -Syu, which makes it conflict with
+# linux-nabu as a second transaction target. The image is not booted between
+# these transactions.
+bwrap \
+  --unshare-user --uid 0 --gid 0 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$rootfs" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
+  --ro-bind "$repo_dir" /mnt \
+  --setenv HOME /root \
+  /usr/bin/bash -lc '
+    if pacman -Qq linux-aarch64 >/dev/null 2>&1; then
+      exec pacman --config /etc/pacman-bk.conf \
+        -Rdd --noconfirm -- linux-aarch64
+    fi
+  '
+
 bwrap \
   --unshare-user --uid 0 --gid 0 \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
