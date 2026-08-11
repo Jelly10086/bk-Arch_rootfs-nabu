@@ -35,6 +35,20 @@ printf '\n%s\n' \
   'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   >>"$pacman_config"
 
+bwrap \
+  --unshare-user --uid 0 --gid 0 \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$rootfs" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --setenv HOME /root \
+  /usr/bin/bash -lc '
+    if [[ ! -s /etc/pacman.d/gnupg/pubring.gpg ]]; then
+      pacman-key --init
+      pacman-key --populate archlinuxarm
+    fi
+  '
+
 # The BaseTree kernel is also selected by -Syu, which makes it conflict with
 # linux-nabu as a second transaction target. The image is not booted between
 # these transactions.
