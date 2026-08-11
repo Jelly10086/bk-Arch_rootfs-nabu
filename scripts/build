@@ -57,7 +57,6 @@ if [[ $clean == 1 ]]; then
     "$project_dir/output/esp" \
     "$project_dir/output/esp.img" \
     "$project_dir/output/arch-linux-nabu.efi" \
-    "$project_dir/output/BUILD-REPORT.md" \
     "$project_dir/output/SHA256SUMS" \
     "$project_dir/output/firmware" \
     "$project_dir/output/packages"; do
@@ -74,7 +73,6 @@ fi
 run_as_root env BK_PUBLIC_BUILD="$public_build" \
   "$project_dir/scripts/build-rootfs" "$profile"
 run_as_root "$project_dir/scripts/build-artifacts"
-run_as_root "$project_dir/scripts/write-report" "$profile"
 
 (
   cd "$project_dir/output"
