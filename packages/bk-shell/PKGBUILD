@@ -1,7 +1,7 @@
 pkgbase=bk-shell
 pkgname=('bk-shell' 'bk-keyboard' 'bk-greeter')
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 arch=('aarch64')
 url='https://github.com/AvengeMedia/DankMaterialShell'
 license=('GPL-3.0-only')
@@ -89,14 +89,20 @@ package_bk-keyboard() {
 package_bk-greeter() {
   pkgdesc='Touch-capable greetd front end for BK nabu'
   depends=('bk-keyboard' 'greetd' 'niri' 'pam' 'quickshell>=0.3.0')
-  backup=('etc/greetd/config.toml')
 
   install -Dm755 "$srcdir/stage/usr/bin/dms-greeter" "$pkgdir/usr/bin/dms-greeter"
   install -Dm755 "$srcdir/stage/usr/bin/bk-greeter" "$pkgdir/usr/bin/bk-greeter"
   install -d "$pkgdir/usr/share/quickshell"
   cp -a --no-preserve=ownership "$srcdir/stage/usr/share/quickshell/bk-greeter" "$pkgdir/usr/share/quickshell/"
   rm -rf "$pkgdir/usr/share/quickshell/bk-greeter/Bk/Keyboard"
-  install -Dm644 "$srcdir/stage/etc/greetd/config.toml" "$pkgdir/etc/greetd/config.toml"
+  install -Dm644 "$srcdir/stage/etc/greetd/config.toml" \
+    "$pkgdir/usr/lib/bk-greeter/config.toml"
+  install -Dm644 /dev/stdin \
+    "$pkgdir/usr/lib/systemd/system/greetd.service.d/10-bk-greeter.conf" <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/greetd --config /usr/lib/bk-greeter/config.toml
+EOF
   install -Dm644 "$srcdir/stage/usr/share/bk-greeter/niri.kdl" \
     "$pkgdir/usr/share/bk-greeter/niri.kdl"
   install -Dm644 "$srcdir/stage/usr/lib/sysusers.d/bk-greeter.conf" \

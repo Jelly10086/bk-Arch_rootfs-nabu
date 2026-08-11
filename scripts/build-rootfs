@@ -49,6 +49,8 @@ bwrap \
     fi
   '
 
+rm -f -- "$rootfs/etc/fstab"
+
 # The BaseTree kernel is also selected by -Syu, which makes it conflict with
 # linux-nabu as a second transaction target. The image is not booted between
 # these transactions.
@@ -78,6 +80,8 @@ bwrap \
   --ro-bind "$repo_dir" /mnt \
   --setenv HOME /root \
   /usr/bin/pacman --config /etc/pacman-bk.conf \
+    --overwrite usr/lib/firmware/qcom/a630_sqe.fw \
+    --overwrite usr/lib/firmware/qcom/a640_gmu.bin \
     -Syu --needed --noconfirm --disable-sandbox -- "${packages[@]}"
 rm -f -- "$pacman_config"
 
