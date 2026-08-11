@@ -1,6 +1,6 @@
 pkgname=bk-log
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Redacting diagnostics collector for BK nabu"
 arch=('any')
 url="https://github.com/endeavouros-team/PKGBUILDS/tree/master/eos-log-tool"

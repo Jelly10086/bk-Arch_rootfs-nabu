@@ -27,12 +27,12 @@ mapfile -t packages < <(
 pacman_config="$rootfs/etc/pacman-bk.conf"
 cp "$rootfs/etc/pacman.conf" "$pacman_config"
 printf '\n%s\n' \
-  '[nabu]' \
-  'SigLevel = Never' \
-  'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   '[bk]' \
   'SigLevel = Optional TrustAll' \
   'Server = file:///mnt' \
+  '[nabu]' \
+  'SigLevel = Never' \
+  'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   >>"$pacman_config"
 
 bwrap \

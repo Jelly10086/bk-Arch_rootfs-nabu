@@ -2,7 +2,7 @@
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 pkgver=6.18.42.bkb26810
-pkgrel=1
+pkgrel=2
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -87,6 +87,7 @@ package_linux-nabu() {
   optdepends=('wireless-regdb: set the wireless regulatory domain')
   provides=("linux=$pkgver")
   conflicts=('linux')
+  replaces=('linux-aarch64')
   install=linux-nabu.install
 
   cd "$srcdir/$_srcname"
