@@ -2,7 +2,7 @@
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 pkgver=6.18.42.bkb26810
-pkgrel=3
+pkgrel=4
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -13,8 +13,8 @@ _srcname=linux-nabu
 _commit=bf584639297f67a855ac14a381c18576b7c77843
 _kernelrelease=6.18.42-nabu-bkb26810
 _dtbfile=qcom/sm8150-xiaomi-nabu.dtb
-source=('bk-sandbox.config')
-sha256sums=('SKIP')
+source=('bk-sandbox.config' 'bk-nabu-prune.config')
+sha256sums=('SKIP' 'SKIP')
 _linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
 prepare() {
@@ -40,7 +40,10 @@ prepare() {
   printf '%s\n' '-nabu-bkb26810' >localversion.20-bk
 
   make ARCH=arm64 defconfig
-  cat arch/arm64/configs/sm8150.config "$srcdir/bk-sandbox.config" >>.config
+  cat arch/arm64/configs/sm8150.config \
+    "$srcdir/bk-sandbox.config" \
+    "$srcdir/bk-nabu-prune.config" \
+    >>.config
   scripts/config --disable LOCALVERSION_AUTO
   scripts/config --set-str LOCALVERSION ''
   make ARCH=arm64 olddefconfig

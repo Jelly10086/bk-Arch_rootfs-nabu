@@ -17,12 +17,31 @@ grep -qx 'PRETTY_NAME="XiaomiPad5"' "$rootfs/etc/os-release"
 grep -qx 'ID=xiaomipad5' "$rootfs/etc/os-release"
 grep -qx 'PARTLABEL=linux  /          ext4  rw,errors=remount-ro,x-systemd.growfs  0 1' \
   "$rootfs/etc/fstab"
-grep -qx 'PARTLABEL=esp    /boot/efi  vfat  rw,umask=0077                         0 2' \
+grep -qx 'PARTLABEL=esp    /boot/efi  vfat  rw,nofail,x-systemd.device-timeout=10s,umask=0077  0 2' \
   "$rootfs/etc/fstab"
 [[ -d $rootfs/usr/lib/modules/$expected_release ]]
 [[ -f $rootfs/boot/vmlinuz-$expected_release ]]
 [[ -f $rootfs/boot/dtb-$expected_release ]]
 [[ -f $uki ]]
+
+kernel_config="$rootfs/boot/config-$expected_release"
+for symbol in \
+  ARCH_QCOM SCSI_UFS_QCOM QCOM_RMTFS_MEM QCOM_GPI_DMA I2C_QCOM_GENI \
+  PINCTRL_SM8150 SM_GCC_8150 SM_GPUCC_8150 SM_VIDEOCC_8150 \
+  SM_DISPCC_8250 INTERCONNECT_QCOM_OSM_L3 INTERCONNECT_QCOM_SM8150 \
+  DRM_MSM DRM_PANEL_NOVATEK_NT36523 TOUCHSCREEN_NT36523_SPI \
+  BACKLIGHT_KTZ8866 SND_SOC_SM8150 CHARGER_IDTP9418 ATH10K ATH10K_SNOC \
+  BT_QCA BT_HCIUART_QCA PHY_QCOM_QMP_UFS EXT4_FS VFAT_FS; do
+  grep -Eq "^CONFIG_${symbol}=[ym]$" "$kernel_config"
+done
+
+while IFS= read -r symbol; do
+  if grep -Eq "^CONFIG_${symbol}=[ym]$" "$kernel_config"; then
+    printf 'pruned kernel option is still enabled: CONFIG_%s\n' "$symbol" >&2
+    exit 1
+  fi
+done < <(sed -n 's/^# CONFIG_\([A-Z0-9_]*\) is not set$/\1/p' \
+  "$project_dir/packages/linux-nabu/bk-nabu-prune.config")
 
 ukify inspect "$uki" | grep -A5 '^\.uname:' | grep -qx "    $expected_release"
 ukify inspect "$uki" | grep -q '^\.dtb:'
@@ -38,8 +57,12 @@ systemd-nspawn --quiet --directory="$rootfs" --register=no \
     id -nG unkn0wn | tr " " "\n" | grep -qx wheel
     pacman -Qkk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu yay
     test -x /usr/bin/dms
+    test -x /usr/bin/bk-greeter
     dms version | grep -q "0.1.0-bk"
     dms keyboard --help | grep -q "type"
+    niri validate --config /usr/share/bk-greeter/niri.kdl
+    grep -qx "command = \"niri --session --config /usr/share/bk-greeter/niri.kdl\"" \
+      /usr/lib/bk-greeter/config.toml
     fc-match -f "%{family}\n" Rubik | grep -q Rubik
     test "$(fc-match -f "%{file}" :lang=zh)" = "$BK_CJK_PATH"
     fc-match -f "%{family}\n" emoji | grep -q "Noto Color Emoji"
