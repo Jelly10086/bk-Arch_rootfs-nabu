@@ -1,6 +1,6 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=10
+pkgrel=11
 pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
@@ -19,6 +19,7 @@ sha256sums=(
 package() {
   install -d "$pkgdir"
   cp -a --no-preserve=ownership "$startdir/files/." "$pkgdir/"
+  chmod 0755 "$pkgdir/usr/lib/bk/apply-defaults"
 
   install -d "$pkgdir/etc/fonts/conf.d"
   ln -s ../conf.avail/60-bk-fonts.conf \

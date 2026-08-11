@@ -7,8 +7,14 @@ public_build=${BK_PUBLIC_BUILD:-0}
 rootfs="$project_dir/output/bk-nabu-rootfs"
 host_resolv=$(readlink -f /etc/resolv.conf)
 repo_dir="$project_dir/output/packages"
+pacman_cache="$project_dir/cache/pacman/pkg"
 profile_file="$project_dir/profiles/$profile/packages"
 list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
+bwrap_user_args=(--unshare-user --uid 0 --gid 0)
+
+if ((EUID == 0)); then
+  bwrap_user_args=()
+fi
 
 [[ -f $profile_file ]] || { echo "unknown profile: $profile" >&2; exit 2; }
 [[ -f $repo_dir/bk.db.tar.zst ]] || { echo 'build the [bk] repository first' >&2; exit 1; }
@@ -16,6 +22,7 @@ list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
 mkosi --directory="$project_dir/image" --profile="$profile" --force build
 mkdir -p "$rootfs/mnt" "$rootfs/boot/efi/EFI/arch"
 mkdir -p "$rootfs/run/systemd/resolve"
+mkdir -p "$pacman_cache"
 
 mapfile -t package_profiles <"$profile_file"
 mapfile -t packages < <(
@@ -35,8 +42,7 @@ printf '\n%s\n' \
   'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   >>"$pacman_config"
 
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
+bwrap "${bwrap_user_args[@]}" \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
   --die-with-parent \
   --bind "$rootfs" / \
@@ -54,8 +60,7 @@ rm -f -- "$rootfs/etc/fstab"
 # The BaseTree kernel is also selected by -Syu, which makes it conflict with
 # linux-nabu as a second transaction target. The image is not booted between
 # these transactions.
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
+bwrap "${bwrap_user_args[@]}" \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
   --die-with-parent \
   --bind "$rootfs" / \
@@ -70,14 +75,14 @@ bwrap \
     fi
   '
 
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
+bwrap "${bwrap_user_args[@]}" \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
   --die-with-parent \
   --bind "$rootfs" / \
   --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
   --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
   --ro-bind "$repo_dir" /mnt \
+  --bind "$pacman_cache" /var/cache/pacman/pkg \
   --setenv HOME /root \
   /usr/bin/pacman --config /etc/pacman-bk.conf \
     --overwrite usr/lib/firmware/qcom/a630_sqe.fw \
@@ -86,11 +91,10 @@ bwrap \
 rm -f -- "$pacman_config"
 
 if [[ $public_build != 1 && -d $project_dir/local-overrides/rootfs ]]; then
-  cp -a "$project_dir/local-overrides/rootfs/." "$rootfs/"
+  cp -a --no-preserve=ownership "$project_dir/local-overrides/rootfs/." "$rootfs/"
 fi
 
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
+bwrap "${bwrap_user_args[@]}" \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
   --die-with-parent \
   --bind "$rootfs" / \
