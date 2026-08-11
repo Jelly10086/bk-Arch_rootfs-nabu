@@ -3,7 +3,7 @@ pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 _kernel_build_date=${BK_KERNEL_BUILD_DATE:-$(date -u +%y%m%d)}
 pkgver=6.18.42.bkb${_kernel_build_date}
-pkgrel=1
+pkgrel=2
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -40,9 +40,11 @@ prepare() {
   rm -rf "$srcdir/$_srcname"
   cp -a --reflink=auto --no-preserve=ownership \
     "$_linux_source" "$srcdir/$_srcname"
+  git -C "$srcdir/$_srcname" clean -ffdx
   rm -rf "$srcdir/$_srcname/.git"
 
   cd "$srcdir/$_srcname"
+  make ARCH=arm64 mrproper
   find . -maxdepth 1 -type f -name 'localversion*' -delete
   printf '%s\n' "-nabu-bkb-${_kernel_build_date}" >localversion.20-bk
 
@@ -66,6 +68,16 @@ prepare() {
 build() {
   cd "$srcdir/$_srcname"
   make ARCH=arm64 prepare
+
+  local symbol
+  while IFS= read -r symbol; do
+    if grep -Eq "^CONFIG_${symbol}=[ym]$" include/config/auto.conf; then
+      printf 'stale pruned option in auto.conf: CONFIG_%s\n' "$symbol" >&2
+      return 1
+    fi
+  done < <(sed -n 's/^# CONFIG_\([A-Z0-9_]*\) is not set$/\1/p' \
+    "$srcdir/bk-nabu-prune.config")
+
   make -s ARCH=arm64 kernelrelease >version
   unset LDFLAGS
   make ${MAKEFLAGS} ARCH=arm64 Image Image.gz modules
