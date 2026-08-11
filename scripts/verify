@@ -4,7 +4,10 @@ set -euo pipefail
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
 rootfs="$project_dir/output/bk-nabu-rootfs"
 uki="$project_dir/output/arch-linux-nabu.efi"
-expected_release=6.18.42-nabu-bkb26810
+kernel_link=$(readlink "$rootfs/boot/vmlinuz-linux-nabu")
+expected_release=${kernel_link#vmlinuz-}
+[[ $expected_release =~ ^6\.18\.42-nabu-bkb-[0-9]{6}$ ]]
+grep -qx "kernel.release=$expected_release" "$rootfs/usr/lib/bk/build-info"
 if [[ ${BK_PUBLIC_BUILD:-0} == 1 ]]; then
   expected_cjk_path=/usr/share/fonts/bk/NotoSansSC-Regular.otf
 else

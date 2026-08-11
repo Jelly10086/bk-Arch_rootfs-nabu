@@ -1,7 +1,11 @@
 #!/bin/bash
 
 regenerate_uki() {
-  local kernver=6.18.42-nabu-bkb26810
+  local kernel_image kernver
+  kernel_image=$(readlink -f /boot/vmlinuz-linux-nabu 2>/dev/null) || return 0
+  kernver=${kernel_image##*/vmlinuz-}
+  [[ $kernver == 6.18.42-nabu-bkb-[0-9][0-9][0-9][0-9][0-9][0-9] ]] \
+    || return 0
   [[ -f /boot/vmlinuz-$kernver ]] || return 0
   mountpoint -q /boot/efi 2>/dev/null || return 0
   install -d /etc/cmdline.d
