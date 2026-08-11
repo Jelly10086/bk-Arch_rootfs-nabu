@@ -34,13 +34,15 @@ bwrap \
   --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
   --setenv HOME /root \
   /usr/bin/bash -lc '
+    set -e
     if [[ ! -s /etc/pacman.d/gnupg/pubring.gpg ]]; then
       pacman-key --init
       pacman-key --populate archlinuxarm
     fi
-    exec pacman -Syu --needed --noconfirm --disable-sandbox \
-      base-devel bc cmake cpio dtc gettext git go inetutils kmod libelf \
+    pacman -Syu --needed --noconfirm --disable-sandbox \
+      base-devel bc ccache cmake cpio dtc gettext git go inetutils kmod libelf \
       ninja pahole patch python
+    sed -i "s/!ccache/ccache/" /etc/makepkg.conf
   ' >&2
 
 printf '%s\n' "$builder_root"

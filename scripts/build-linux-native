@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+package_dir="$project_dir/packages/linux-nabu"
+native_root="$project_dir/build/linux-native"
+
+for command_name in \
+  aarch64-linux-gnu-gcc aarch64-linux-gnu-ld bc bison ccache cpio dtc \
+  flex gcc g++ make pahole patch perl python3; do
+  command -v "$command_name" >/dev/null || {
+    printf 'missing native kernel build dependency: %s\n' \
+      "$command_name" >&2
+    exit 1
+  }
+done
+
+startdir="$package_dir"
+srcdir="$native_root/src"
+pkgdir="$native_root/pkg"
+export startdir srcdir pkgdir
+export BK_LINUX_SOURCE="$project_dir/cache/sources/git/linux-nabu"
+export CROSS_COMPILE=aarch64-linux-gnu-
+export CC='ccache aarch64-linux-gnu-gcc'
+export HOSTCC='ccache gcc'
+export HOSTCXX='ccache g++'
+export CCACHE_DIR="$project_dir/cache/ccache-native"
+export CCACHE_BASEDIR="$project_dir"
+export CCACHE_COMPILERCHECK=content
+export MAKEFLAGS="${BK_KERNEL_MAKEFLAGS:--j$(nproc) -l$(nproc)}"
+export KBUILD_BUILD_USER=bk
+export KBUILD_BUILD_HOST=native-builder
+
+rm -rf -- "$native_root/src" "$native_root/pkg"
+mkdir -p "$srcdir" "$pkgdir" "$CCACHE_DIR"
+install -m644 \
+  "$package_dir/bk-sandbox.config" \
+  "$package_dir/bk-nabu-prune.config" \
+  "$package_dir/idtp9418-gpio-consumer.patch" \
+  "$srcdir/"
+
+# shellcheck source=/dev/null
+. "$package_dir/PKGBUILD"
+prepare
+build
+
+printf 'Native kernel tree ready: %s\n' "$srcdir/$_srcname"

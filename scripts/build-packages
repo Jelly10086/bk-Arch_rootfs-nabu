@@ -12,6 +12,7 @@ shell_commit=$(git -C "$shell_dir" rev-parse HEAD)
 kernel_release=6.18.42-sm8150
 
 mkdir -p "$package_output" "$project_dir/cache/sources/makepkg" \
+  "$project_dir/cache/ccache" \
   "$project_dir/cache/go/build" "$project_dir/cache/go/pkg/mod" \
   "$project_dir/build/makepkg" "$project_dir/logs/makepkg"
 
@@ -34,9 +35,13 @@ build_one() {
     --setenv GOCACHE /workspace/bk-Arch_nabu/cache/go/build \
     --setenv GOMODCACHE /workspace/bk-Arch_nabu/cache/go/pkg/mod \
     --setenv PACKAGER 'BK nabu build <noreply@localhost>' \
-    --setenv MAKEFLAGS "-j$(nproc)" \
+    --setenv MAKEFLAGS "-j8 -l8" \
+    --setenv CCACHE_DIR /workspace/bk-Arch_nabu/cache/ccache \
+    --setenv CCACHE_BASEDIR /workspace/bk-Arch_nabu \
+    --setenv CCACHE_COMPILERCHECK content \
     --setenv BK_SHELL_SOURCE /workspace/bk-shell \
     --setenv BK_LINUX_SOURCE /workspace/bk-Arch_nabu/cache/sources/git/linux-nabu \
+    --setenv BK_LINUX_PREBUILT "${linux_prebuilt:-}" \
     --setenv BK_DISTRO_COMMIT "$distro_commit" \
     --setenv BK_SHELL_COMMIT "$shell_commit" \
     --setenv BK_MKOSI_VERSION "$mkosi_version" \
@@ -57,6 +62,12 @@ for package_dir in "${packages_to_build[@]}"; do
     *" $package_dir "*) ;;
     *) printf 'unknown package: %s\n' "$package_dir" >&2; exit 2 ;;
   esac
+  if [[ $package_dir == linux-nabu ]]; then
+    if [[ ${BK_REUSE_NATIVE_KERNEL:-0} != 1 ]]; then
+      "$project_dir/scripts/build-linux-native"
+    fi
+    linux_prebuilt=/workspace/bk-Arch_nabu/build/linux-native/src/linux-nabu
+  fi
   build_one "$package_dir"
 done
 

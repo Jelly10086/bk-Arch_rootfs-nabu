@@ -58,11 +58,14 @@ systemd-nspawn --quiet --directory="$rootfs" --register=no \
     test "$(getent passwd unkn0wn | cut -d: -f7)" = /bin/zsh
     passwd -S root | grep -q "^root L"
     id -nG unkn0wn | tr " " "\n" | grep -qx wheel
-    pacman -Qkk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu yay
+    pacman -Qk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu yay
+    test "$(pacman -Qoq /usr/bin/dms)" = bk-shell
+    test "$(pacman -Qoq /usr/bin/bk-keyboard)" = bk-keyboard
+    test "$(pacman -Qoq /usr/bin/bk-greeter)" = bk-greeter
     test -x /usr/bin/dms
     test -x /usr/bin/bk-greeter
-    dms version | grep -q "0.1.0-bk"
-    dms keyboard --help | grep -q "type"
+    runuser -u unkn0wn -- dms version | grep -q "0.1.0-bk"
+    runuser -u unkn0wn -- dms keyboard --help | grep -q "type"
     niri validate --config /usr/share/bk-greeter/niri.kdl
     grep -qx "command = \"niri --session --config /usr/share/bk-greeter/niri.kdl\"" \
       /usr/lib/bk-greeter/config.toml
@@ -74,6 +77,18 @@ systemd-nspawn --quiet --directory="$rootfs" --register=no \
 
 for service in NetworkManager bluetooth greetd nabu-pmac rmtfs; do
   systemctl --root="$rootfs" is-enabled "$service.service" >/dev/null
+done
+[[ $(systemctl --root="$rootfs" --global is-enabled bk-shell.service) == enabled ]]
+[[ $(systemctl --root="$rootfs" --global is-enabled bk-shell-stock.service \
+  2>/dev/null || true) == disabled ]]
+
+headers_package=$(find "$project_dir/output/packages" -maxdepth 1 -type f \
+  -name 'linux-nabu-headers-*.pkg.tar.*' -print -quit)
+[[ -n $headers_package ]]
+for tool in scripts/basic/fixdep scripts/mod/modpost; do
+  bsdtar -xOf "$headers_package" \
+    "usr/lib/modules/$expected_release/build/$tool" \
+    | file -b - | grep -q 'ARM aarch64'
 done
 
 e2fsck -fn "$project_dir/output/bk-nabu-rootfs.img"

@@ -2,7 +2,7 @@
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 pkgver=6.18.42
-pkgrel=2
+pkgrel=4
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -19,7 +19,25 @@ source=('bk-sandbox.config' 'bk-nabu-prune.config'
 sha256sums=('SKIP' 'SKIP' 'SKIP')
 _linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
+_kmake() {
+  local -a args=(ARCH=arm64)
+  if [[ -n ${CROSS_COMPILE:-} ]]; then
+    args+=(CROSS_COMPILE="$CROSS_COMPILE")
+  fi
+  command make "${args[@]}" "$@"
+}
+
 prepare() {
+  if [[ -n ${BK_LINUX_PREBUILT:-} ]]; then
+    [[ -f $BK_LINUX_PREBUILT/version ]] || {
+      printf 'native linux-nabu build not found: %s\n' \
+        "$BK_LINUX_PREBUILT" >&2
+      return 1
+    }
+    ln -s "$BK_LINUX_PREBUILT" "$srcdir/$_srcname"
+    return
+  fi
+
   [[ -d $_linux_source/.git ]] || {
     printf 'linux-nabu checkout not found: %s\n' "$_linux_source" >&2
     return 1
@@ -40,19 +58,19 @@ prepare() {
 
   cd "$srcdir/$_srcname"
   patch -Np1 -i "$srcdir/idtp9418-gpio-consumer.patch"
-  make ARCH=arm64 mrproper
+  _kmake mrproper
 
-  make ARCH=arm64 defconfig
+  _kmake defconfig
   cat arch/arm64/configs/sm8150.config \
     "$srcdir/bk-sandbox.config" \
     "$srcdir/bk-nabu-prune.config" \
     >>.config
   scripts/config --disable LOCALVERSION_AUTO
-  make ARCH=arm64 olddefconfig
-  make ARCH=arm64 syncconfig
+  _kmake olddefconfig
+  _kmake syncconfig
 
   local actual
-  actual=$(make -s ARCH=arm64 kernelrelease)
+  actual=$(_kmake -s kernelrelease)
   [[ $actual == "$_kernelrelease" ]] || {
     printf 'kernel release mismatch: expected %s, got %s\n' "$_kernelrelease" "$actual" >&2
     return 1
@@ -61,7 +79,12 @@ prepare() {
 
 build() {
   cd "$srcdir/$_srcname"
-  make ARCH=arm64 prepare
+  if [[ -n ${BK_LINUX_PREBUILT:-} ]]; then
+    [[ $(<version) == "$_kernelrelease" ]] || return 1
+    return
+  fi
+
+  _kmake prepare
 
   local symbol
   while IFS= read -r symbol; do
@@ -72,10 +95,10 @@ build() {
   done < <(sed -n 's/^# CONFIG_\([A-Z0-9_]*\) is not set$/\1/p' \
     "$srcdir/bk-nabu-prune.config")
 
-  make -s ARCH=arm64 kernelrelease >version
+  _kmake -s kernelrelease >version
   unset LDFLAGS
-  make ${MAKEFLAGS} ARCH=arm64 Image Image.gz modules
-  make ${MAKEFLAGS} ARCH=arm64 DTC_FLAGS='-@' dtbs
+  _kmake Image Image.gz modules
+  _kmake DTC_FLAGS='-@' dtbs
 }
 
 _package_common() {
@@ -91,7 +114,7 @@ _package_common() {
   ln -s "vmlinuz-$kernver" "$pkgdir/boot/vmlinuz-linux-nabu"
   ln -s "dtb-$kernver" "$pkgdir/boot/dtb-linux-nabu"
 
-  make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
+  _kmake INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
     DEPMOD=/doesntexist modules_install
   rm -f "$pkgdir/usr/lib/modules/$kernver/build" \
     "$pkgdir/usr/lib/modules/$kernver/source"
@@ -129,9 +152,31 @@ package_linux-nabu-headers() {
   conflicts=('linux-headers')
 
   cd "$srcdir/$_srcname"
+  if [[ -n ${BK_LINUX_PREBUILT:-} ]]; then
+    find scripts -type f \( -name '*.o' -o -name '*.a' \) -delete
+    rm -f \
+      scripts/basic/fixdep \
+      scripts/dtc/dtc \
+      scripts/dtc/fdtoverlay \
+      scripts/kallsyms \
+      scripts/kconfig/conf \
+      scripts/mod/mk_elfconfig \
+      scripts/mod/modpost \
+      scripts/sorttable \
+      scripts/asn1_compiler
+    _kmake olddefconfig
+    _kmake scripts
+    _kmake CONFIG_DEBUG_INFO_BTF= CONFIG_DEBUG_INFO_BTF_MODULES= prepare
+  fi
+
   local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
   install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
-    localversion.* version vmlinux
+    version vmlinux
+  local localversion
+  for localversion in localversion.*; do
+    [[ -e $localversion ]] || continue
+    install -Dt "$builddir" -m644 "$localversion"
+  done
   install -Dt "$builddir/kernel" -m644 kernel/Makefile
   install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
   cp -t "$builddir" -a --no-preserve=ownership scripts include
