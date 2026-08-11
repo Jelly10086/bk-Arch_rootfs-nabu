@@ -2,7 +2,7 @@
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 pkgver=6.18.42
-pkgrel=1
+pkgrel=2
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -14,8 +14,9 @@ _commit=bf584639297f67a855ac14a381c18576b7c77843
 _kernelrelease=6.18.42-sm8150
 _dtbfile=qcom/sm8150-xiaomi-nabu.dtb
 export LOCALVERSION=
-source=('bk-sandbox.config' 'bk-nabu-prune.config')
-sha256sums=('SKIP' 'SKIP')
+source=('bk-sandbox.config' 'bk-nabu-prune.config'
+        'idtp9418-gpio-consumer.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP')
 _linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
 prepare() {
@@ -38,6 +39,7 @@ prepare() {
   rm -rf "$srcdir/$_srcname/.git"
 
   cd "$srcdir/$_srcname"
+  patch -Np1 -i "$srcdir/idtp9418-gpio-consumer.patch"
   make ARCH=arm64 mrproper
 
   make ARCH=arm64 defconfig

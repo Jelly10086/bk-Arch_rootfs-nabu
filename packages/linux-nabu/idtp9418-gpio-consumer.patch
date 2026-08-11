@@ -1,0 +1,12 @@
+diff --git a/drivers/power/supply/idtp9418.c b/drivers/power/supply/idtp9418.c
+index 843705a..67de944 100644
+--- a/drivers/power/supply/idtp9418.c
++++ b/drivers/power/supply/idtp9418.c
+@@ -5,6 +5,7 @@
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/i2c.h>
++#include <linux/gpio/consumer.h>
+ #include <linux/regmap.h>
+ #include <linux/power_supply.h>
+ #include <linux/pinctrl/consumer.h>
