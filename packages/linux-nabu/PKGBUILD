@@ -1,9 +1,8 @@
 # Packaging structure retained from Kumar-Jy/nabu-pkgs.
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
-_kernel_build_date=${BK_KERNEL_BUILD_DATE:-$(date -u +%y%m%d)}
-pkgver=6.18.42.bkb${_kernel_build_date}
-pkgrel=2
+pkgver=6.18.42
+pkgrel=1
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -12,19 +11,14 @@ makedepends=('bc' 'cpio' 'dtc' 'git' 'inetutils' 'kmod' 'libelf' 'pahole' 'pytho
 options=('!strip')
 _srcname=linux-nabu
 _commit=bf584639297f67a855ac14a381c18576b7c77843
-_kernelrelease=6.18.42-nabu-bkb-${_kernel_build_date}
+_kernelrelease=6.18.42-sm8150
 _dtbfile=qcom/sm8150-xiaomi-nabu.dtb
+export LOCALVERSION=
 source=('bk-sandbox.config' 'bk-nabu-prune.config')
 sha256sums=('SKIP' 'SKIP')
 _linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
 prepare() {
-  [[ $_kernel_build_date =~ ^[0-9]{6}$ ]] || {
-    printf 'BK_KERNEL_BUILD_DATE must use YYMMDD: %s\n' \
-      "$_kernel_build_date" >&2
-    return 1
-  }
-
   [[ -d $_linux_source/.git ]] || {
     printf 'linux-nabu checkout not found: %s\n' "$_linux_source" >&2
     return 1
@@ -45,8 +39,6 @@ prepare() {
 
   cd "$srcdir/$_srcname"
   make ARCH=arm64 mrproper
-  find . -maxdepth 1 -type f -name 'localversion*' -delete
-  printf '%s\n' "-nabu-bkb-${_kernel_build_date}" >localversion.20-bk
 
   make ARCH=arm64 defconfig
   cat arch/arm64/configs/sm8150.config \
@@ -54,8 +46,8 @@ prepare() {
     "$srcdir/bk-nabu-prune.config" \
     >>.config
   scripts/config --disable LOCALVERSION_AUTO
-  scripts/config --set-str LOCALVERSION ''
   make ARCH=arm64 olddefconfig
+  make ARCH=arm64 syncconfig
 
   local actual
   actual=$(make -s ARCH=arm64 kernelrelease)

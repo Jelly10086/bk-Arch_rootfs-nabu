@@ -9,14 +9,7 @@ shell_dir="$workspace_parent/bk-shell"
 mkosi_version=$(mkosi --version | awk '{print $2}')
 distro_commit=$(git -C "$project_dir" rev-parse HEAD)
 shell_commit=$(git -C "$shell_dir" rev-parse HEAD)
-source_date_epoch=${SOURCE_DATE_EPOCH:-$(date -u +%s)}
-kernel_build_date=${BK_KERNEL_BUILD_DATE:-$(date -u -d "@$source_date_epoch" +%y%m%d)}
-kernel_release="6.18.42-nabu-bkb-$kernel_build_date"
-
-[[ $kernel_build_date =~ ^[0-9]{6}$ ]] || {
-  echo 'BK_KERNEL_BUILD_DATE must use YYMMDD' >&2
-  exit 2
-}
+kernel_release=6.18.42-sm8150
 
 mkdir -p "$package_output" "$project_dir/cache/sources/makepkg" \
   "$project_dir/cache/go/build" "$project_dir/cache/go/pkg/mod" \
@@ -47,8 +40,6 @@ build_one() {
     --setenv BK_DISTRO_COMMIT "$distro_commit" \
     --setenv BK_SHELL_COMMIT "$shell_commit" \
     --setenv BK_MKOSI_VERSION "$mkosi_version" \
-    --setenv SOURCE_DATE_EPOCH "$source_date_epoch" \
-    --setenv BK_KERNEL_BUILD_DATE "$kernel_build_date" \
     --setenv BK_KERNEL_RELEASE "$kernel_release" \
     --chdir "$container_dir" \
     /usr/bin/bash -lc 'mkdir -p "$HOME"; exec makepkg --noconfirm --cleanbuild --clean --force --nodeps'

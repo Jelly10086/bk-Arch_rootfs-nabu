@@ -5,13 +5,6 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd)
 profile=release
 clean=0
 public_build=0
-export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date -u +%s)}
-export BK_KERNEL_BUILD_DATE=${BK_KERNEL_BUILD_DATE:-$(date -u -d "@$SOURCE_DATE_EPOCH" +%y%m%d)}
-
-[[ $BK_KERNEL_BUILD_DATE =~ ^[0-9]{6}$ ]] || {
-  echo 'BK_KERNEL_BUILD_DATE must use YYMMDD' >&2
-  exit 2
-}
 
 run_as_root() {
   if ((EUID == 0)); then
