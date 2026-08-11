@@ -6,6 +6,14 @@ profile=release
 clean=0
 public_build=0
 
+run_as_root() {
+  if ((EUID == 0)); then
+    "$@"
+  else
+    sudo -- "$@"
+  fi
+}
+
 while (($#)); do
   case $1 in
     --profile)
@@ -54,7 +62,8 @@ if [[ $clean == 1 ]]; then
     "$project_dir/output/firmware" \
     "$project_dir/output/packages"; do
     case $target in
-      "$project_dir"/build/*|"$project_dir"/output/*) rm -rf -- "$target" ;;
+      "$project_dir"/build/*) rm -rf -- "$target" ;;
+      "$project_dir"/output/*) run_as_root rm -rf -- "$target" ;;
       *) echo "unsafe clean target: $target" >&2; exit 1 ;;
     esac
   done
@@ -62,9 +71,10 @@ fi
 
 "$project_dir/scripts/fetch-sources"
 "$project_dir/scripts/build-packages"
-BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/build-rootfs" "$profile"
-"$project_dir/scripts/build-artifacts"
-"$project_dir/scripts/write-report" "$profile"
+run_as_root env BK_PUBLIC_BUILD="$public_build" \
+  "$project_dir/scripts/build-rootfs" "$profile"
+run_as_root "$project_dir/scripts/build-artifacts"
+run_as_root "$project_dir/scripts/write-report" "$profile"
 
 (
   cd "$project_dir/output"
@@ -80,7 +90,7 @@ BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/build-rootfs" "$profile"
   xargs -d '\n' sha256sum <../build/checksum-files >SHA256SUMS
 )
 
-BK_PUBLIC_BUILD=$public_build "$project_dir/scripts/verify"
+run_as_root env BK_PUBLIC_BUILD="$public_build" "$project_dir/scripts/verify"
 if [[ $public_build == 1 ]]; then
   "$project_dir/scripts/audit-public" --artifacts
 fi

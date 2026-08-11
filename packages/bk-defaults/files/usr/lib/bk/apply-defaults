@@ -47,6 +47,7 @@ passwd --lock root >/dev/null
 install -d -m0750 -o unkn0wn -g users /home/unkn0wn
 cp -a -n /etc/skel/. /home/unkn0wn/
 chown -R unkn0wn:users /home/unkn0wn
+chmod 0750 /home/unkn0wn
 chmod 0440 /etc/sudoers.d/10-wheel
 
 uid=$(id -u unkn0wn)

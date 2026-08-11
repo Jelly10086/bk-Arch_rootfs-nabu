@@ -10,11 +10,11 @@ repo_dir="$project_dir/output/packages"
 pacman_cache="$project_dir/cache/pacman/pkg"
 profile_file="$project_dir/profiles/$profile/packages"
 list_dir="$project_dir/packages/bk-packagelist/files/usr/share/bk/package-lists"
-bwrap_user_args=(--unshare-user --uid 0 --gid 0)
 
-if ((EUID == 0)); then
-  bwrap_user_args=()
-fi
+((EUID == 0)) || {
+  echo 'build-rootfs must run as root to preserve target ownership' >&2
+  exit 1
+}
 
 [[ -f $profile_file ]] || { echo "unknown profile: $profile" >&2; exit 2; }
 [[ -f $repo_dir/bk.db.tar.zst ]] || { echo 'build the [bk] repository first' >&2; exit 1; }
@@ -42,12 +42,7 @@ printf '\n%s\n' \
   'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
   >>"$pacman_config"
 
-bwrap "${bwrap_user_args[@]}" \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --bind "$rootfs" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --setenv HOME /root \
+systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
   /usr/bin/bash -lc '
     if [[ ! -s /etc/pacman.d/gnupg/pubring.gpg ]]; then
       pacman-key --init
@@ -60,14 +55,9 @@ rm -f -- "$rootfs/etc/fstab"
 # The BaseTree kernel is also selected by -Syu, which makes it conflict with
 # linux-nabu as a second transaction target. The image is not booted between
 # these transactions.
-bwrap "${bwrap_user_args[@]}" \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --bind "$rootfs" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
-  --ro-bind "$repo_dir" /mnt \
-  --setenv HOME /root \
+systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
+  --bind-ro="$host_resolv:/run/systemd/resolve/resolv.conf" \
+  --bind-ro="$repo_dir:/mnt" \
   /usr/bin/bash -lc '
     if pacman -Qq linux-aarch64 >/dev/null 2>&1; then
       exec pacman --config /etc/pacman-bk.conf \
@@ -75,15 +65,10 @@ bwrap "${bwrap_user_args[@]}" \
     fi
   '
 
-bwrap "${bwrap_user_args[@]}" \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --bind "$rootfs" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
-  --ro-bind "$repo_dir" /mnt \
-  --bind "$pacman_cache" /var/cache/pacman/pkg \
-  --setenv HOME /root \
+systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
+  --bind-ro="$host_resolv:/run/systemd/resolve/resolv.conf" \
+  --bind-ro="$repo_dir:/mnt" \
+  --bind="$pacman_cache:/var/cache/pacman/pkg" \
   /usr/bin/pacman --config /etc/pacman-bk.conf \
     --overwrite usr/lib/firmware/qcom/a630_sqe.fw \
     --overwrite usr/lib/firmware/qcom/a640_gmu.bin \
@@ -94,14 +79,9 @@ if [[ $public_build != 1 && -d $project_dir/local-overrides/rootfs ]]; then
   cp -a --no-preserve=ownership "$project_dir/local-overrides/rootfs/." "$rootfs/"
 fi
 
-bwrap "${bwrap_user_args[@]}" \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --bind "$rootfs" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
-  --setenv HOME /root \
-  /usr/bin/bash -lc 'fc-cache -f; systemd-tmpfiles --create; mkinitcpio -p linux-nabu'
+systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
+  /usr/bin/bash -lc \
+    'systemd-tmpfiles --create; /usr/lib/bk/apply-defaults; fc-cache -f; mkinitcpio -p linux-nabu'
 
 systemctl --root="$rootfs" preset-all
 systemctl --root="$rootfs" --global preset-all
