@@ -19,7 +19,7 @@ if [[ ${BK_PRIVILEGED_BUILDER:-0} == 1 ]]; then
     exit 1
   }
   bwrap_command=(sudo bwrap)
-  bwrap_user_args=(--gid 0 --uid 0)
+  bwrap_user_args=()
   privileged_builder=1
 fi
 

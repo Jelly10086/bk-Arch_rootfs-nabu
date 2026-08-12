@@ -21,6 +21,7 @@ mkdir -p "$project_dir/cache" "$project_dir/output"
 
 bwrap_command=(bwrap)
 user_args=(--unshare-user --uid 0 --gid 0)
+command_prefix=()
 container_home=/root
 if [[ $run_as_user == 1 ]]; then
   user_args=(--unshare-user)
@@ -34,9 +35,15 @@ if [[ ${BK_PRIVILEGED_BUILDER:-0} == 1 ]]; then
     exit 1
   }
   bwrap_command=(sudo bwrap)
-  user_args=(--gid 0 --uid 0)
+  user_args=()
   if [[ $run_as_user == 1 ]]; then
-    user_args=(--gid "$(id -g)" --uid "$(id -u)")
+    command_prefix=(
+      /usr/bin/setpriv
+      --reuid "$(id -u)"
+      --regid "$(id -g)"
+      --clear-groups
+      --no-new-privs
+    )
   fi
 fi
 
@@ -51,4 +58,5 @@ exec "${bwrap_command[@]}" \
   --bind "$project_dir/cache" /source/cache \
   --bind "$project_dir/output" /output \
   --setenv HOME "$container_home" \
+  "${command_prefix[@]}" \
   "$@"
