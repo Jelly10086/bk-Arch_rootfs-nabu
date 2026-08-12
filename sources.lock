@@ -31,28 +31,28 @@ ref = "main"
 commit = "19d243e19c79e82bedf413f3e28eba7c3469cc69"
 
 [[git]]
-name = "niri"
-url = "https://github.com/niri-wm/niri.git"
-ref = "v26.04"
-commit = "8ed0da44d974c32c6877d2f4630c314da0717ecb"
-
-[[git]]
-name = "dms"
-url = "https://github.com/AvengeMedia/DankMaterialShell.git"
-ref = "master"
-commit = "db1ab5b7b42a222d5a4e7bcc9c4bc2c6efab65dd"
-
-[[git]]
-name = "clavis"
-url = "https://github.com/StatIndet/quickshell.git"
+name = "noctalia-pad"
+url = "https://github.com/Jelly10086/noctalia-pad.git"
 ref = "main"
-commit = "ff54f4a12917d628e91ce7efb0dbf87f0c778a17"
+commit = "514e639578da58c1ce4d0112c901e81ace6dba4e"
 
 [[git]]
-name = "dank-greeter"
-url = "https://github.com/AvengeMedia/dank-greeter.git"
+name = "noctalia-greeter"
+url = "https://github.com/noctalia-dev/noctalia-greeter.git"
+ref = "main"
+commit = "d0180243312ebcb241c64391e7c42ac71a2fcac4"
+
+[[git]]
+name = "dots-hyprland"
+url = "https://github.com/end-4/dots-hyprland.git"
+ref = "hyprland"
+commit = "69f1a543196d47286a4630c2c0868a1827e512f2"
+
+[[git]]
+name = "tqftpserv"
+url = "https://github.com/andersson/tqftpserv.git"
 ref = "master"
-commit = "f353eafdee856a2e1c6ce87ce551304e8a6ed404"
+commit = "b6bb92d40cfffe28621abcf7bfaa6d99beea46cb"
 
 [[git]]
 name = "endeavouros-pkgbuilds"

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+workspace_parent=$(dirname "$project_dir")
+package_dir=${1:?package directory is required}
+package_path="$project_dir/packages/$package_dir"
+package_output="$project_dir/output/packages"
+noctalia_source="$workspace_parent/noctalia"
+kernel_release=6.18.42-sm8150
+
+[[ -f $package_path/PKGBUILD ]] || {
+  printf 'missing PKGBUILD: %s\n' "$package_path" >&2
+  exit 1
+}
+
+"$project_dir/scripts/prepare-cross" >/dev/null
+cross_file="$project_dir/build/cross/aarch64-archlinux.ini"
+makepkg_config="$project_dir/build/cross/makepkg-aarch64.conf"
+sysroot="$project_dir/build/builder-root"
+export PATH="$project_dir/build/cross/bin:$PATH"
+
+mkdir -p "$package_output" "$project_dir/cache/sources/makepkg" \
+  "$project_dir/cache/ccache-cross" "$project_dir/cache/go/build" \
+  "$project_dir/cache/go/pkg/mod" "$project_dir/build/makepkg-host" \
+  "$project_dir/logs/makepkg"
+
+export PKGDEST="$package_output"
+export SRCDEST="$project_dir/cache/sources/makepkg"
+export BUILDDIR="$project_dir/build/makepkg-host"
+export LOGDEST="$project_dir/logs/makepkg"
+export GOCACHE="$project_dir/cache/go/build"
+export GOMODCACHE="$project_dir/cache/go/pkg/mod"
+export PACKAGER='BK nabu build <noreply@localhost>'
+export MAKEFLAGS="${BK_MAKEFLAGS:--j9 -l9}"
+export CCACHE_DIR="$project_dir/cache/ccache-cross"
+export CCACHE_BASEDIR="$project_dir"
+export CCACHE_COMPILERCHECK=content
+export BK_HOST_CROSS=1
+export BK_CROSS_FILE="$cross_file"
+export BK_CROSS_SYSROOT="$sysroot"
+export BK_CROSS_PKG_CONFIG="$project_dir/scripts/aarch64-pkg-config"
+export BK_NOCTALIA_SOURCE="$noctalia_source"
+export BK_NOCTALIA_PAD_COMMIT="$(git -C "$noctalia_source" rev-parse HEAD)"
+export BK_NOCTALIA_COMMIT="$BK_NOCTALIA_PAD_COMMIT"
+export BK_NOCTALIA_GREETER_COMMIT=d0180243312ebcb241c64391e7c42ac71a2fcac4
+export BK_END4_SOURCE="$project_dir/cache/sources/git/dots-hyprland"
+export BK_END4_COMMIT=69f1a543196d47286a4630c2c0868a1827e512f2
+export BK_TQFTPSERV_SOURCE="$project_dir/cache/sources/git/tqftpserv"
+export BK_LINUX_SOURCE="$project_dir/cache/sources/git/linux-nabu"
+export BK_DISTRO_COMMIT="$(git -C "$project_dir" rev-parse HEAD)"
+export BK_MKOSI_VERSION="$(mkosi --version | awk '{print $2}')"
+export BK_KERNEL_RELEASE="$kernel_release"
+
+if [[ $package_dir == linux-nabu ]]; then
+  export CROSS_COMPILE=aarch64-linux-gnu-
+  export HOSTCC='ccache gcc'
+  export HOSTCXX='ccache g++'
+  if [[ ${BK_REUSE_NATIVE_KERNEL:-0} != 1 ]]; then
+    "$project_dir/scripts/build-linux-native"
+  fi
+  export BK_LINUX_PREBUILT="$project_dir/build/linux-native/src/linux-nabu"
+fi
+
+cd "$package_path"
+makepkg_args=(--config "$makepkg_config" --ignorearch --noconfirm \
+  --clean --force --nodeps)
+if [[ ${BK_INCREMENTAL:-0} == 1 ]]; then
+  makepkg_args+=(--noextract)
+else
+  makepkg_args+=(--cleanbuild)
+fi
+exec makepkg "${makepkg_args[@]}"

@@ -1,0 +1,42 @@
+pkgname=tqftpserv
+pkgver=1.1.1
+pkgrel=2
+pkgdesc='QRTR TFTP server for Qualcomm remote processors'
+arch=('aarch64')
+url='https://github.com/andersson/tqftpserv'
+license=('BSD-3-Clause')
+depends=('qrtr' 'zstd')
+makedepends=('meson' 'ninja')
+_commit=b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
+_source=${BK_TQFTPSERV_SOURCE:-"$startdir/../../cache/sources/git/tqftpserv"}
+
+prepare() {
+  [[ -d $_source/.git ]] || {
+    printf 'tqftpserv checkout not found: %s\n' "$_source" >&2
+    return 1
+  }
+  [[ $(git -C "$_source" rev-parse HEAD) == "$_commit" ]] || {
+    printf 'tqftpserv commit mismatch\n' >&2
+    return 1
+  }
+
+  cp -a --reflink=auto --no-preserve=ownership "$_source" "$srcdir/$pkgname"
+  git -C "$srcdir/$pkgname" clean -ffdx
+}
+
+build() {
+  if [[ ${BK_HOST_CROSS:-0} == 1 ]]; then
+    meson setup "$pkgname" build --cross-file "$BK_CROSS_FILE" \
+      --prefix=/usr --buildtype=plain \
+      -Dsystemd-unit-prefix=/usr/lib/systemd/system
+  else
+    arch-meson "$pkgname" build
+  fi
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  install -Dm644 "$pkgname/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,50 @@
+diff --git a/drivers/input/touchscreen/nt36523/nt36xxx.c b/drivers/input/touchscreen/nt36523/nt36xxx.c
+index 3cf0e099c..71242b8bf 100644
+--- a/drivers/input/touchscreen/nt36523/nt36xxx.c
++++ b/drivers/input/touchscreen/nt36523/nt36xxx.c
+@@ -992,6 +992,28 @@ static void nvt_resume_work(struct work_struct *work)
+ 	nvt_ts_resume(&ts_core->client->dev);
+ }
+ 
++#define NVT_FW_UPDATE_RETRIES 3
++#define NVT_FW_RETRY_DELAY_MS 200
++
++static int32_t nvt_update_firmware_with_retry(const char *firmware_name)
++{
++	int32_t ret = 0;
++	uint8_t attempt;
++
++	for (attempt = 1; attempt <= NVT_FW_UPDATE_RETRIES; attempt++) {
++		ret = nvt_update_firmware(firmware_name);
++		if (!ret)
++			break;
++
++		NVT_ERR("firmware update attempt %u/%u failed. (%d)\n",
++			attempt, NVT_FW_UPDATE_RETRIES, ret);
++		if (attempt < NVT_FW_UPDATE_RETRIES)
++			msleep(NVT_FW_RETRY_DELAY_MS);
++	}
++
++	return ret;
++}
++
+ /*******************************************************
+ Description:
+ 	Novatek touchscreen driver probe function.
+@@ -1229,6 +1251,6 @@ static int32_t nvt_ts_probe(struct spi_device *client)
+ 	init_completion(&ts->dev_pm_suspend_completion);
+ 
+-	ret = nvt_update_firmware(ts->fw_name);
++	ret = nvt_update_firmware_with_retry(ts->fw_name);
+ 	if (ret)
+ 		NVT_ERR("download firmware failed\n");
+ 
+@@ -1464,7 +1486,7 @@ static int32_t nvt_ts_resume(struct device *dev)
+ 	ts->ic_state = NVT_IC_RESUME_IN;
+ 
+ 	// please make sure display reset(RESX) sequence and mipi dsi cmds sent before this
+-	if (nvt_update_firmware(ts->fw_name))
++	if (nvt_update_firmware_with_retry(ts->fw_name))
+ 		NVT_ERR("download firmware failed\n");
+ 
+ 	nvt_check_fw_reset_state(RESET_STATE_REK);

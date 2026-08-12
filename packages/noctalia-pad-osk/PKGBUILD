@@ -1,0 +1,47 @@
+pkgname=noctalia-pad-osk
+pkgver=20260812
+pkgrel=1
+pkgdesc='Original end-4 on-screen keyboard integration for Noctalia Pad'
+arch=('any')
+url='https://github.com/end-4/dots-hyprland'
+license=('GPL-3.0-only')
+depends=(
+  'bash' 'hyprland' 'quickshell' 'qt6-5compat' 'ydotool'
+  'ttf-material-symbols-variable'
+)
+
+_commit=${BK_END4_COMMIT:?BK_END4_COMMIT is required}
+_source=${BK_END4_SOURCE:-"$startdir/../../cache/sources/git/dots-hyprland"}
+
+prepare() {
+  [[ -d $_source/.git ]] || {
+    printf 'end-4 checkout not found: %s\n' "$_source" >&2
+    return 1
+  }
+  [[ $(git -C "$_source" rev-parse HEAD) == "$_commit" ]] || {
+    echo 'end-4 commit mismatch' >&2
+    return 1
+  }
+  [[ -f $_source/dots/.config/quickshell/ii/modules/ii/onScreenKeyboard/OnScreenKeyboard.qml ]] || {
+    echo 'end-4 on-screen keyboard source is missing' >&2
+    return 1
+  }
+}
+
+package() {
+  local pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+  local install_root="$pkgdir/usr/share/noctalia-pad/end4-osk/ii"
+
+  install -d "$install_root"
+  cp -a --no-preserve=ownership "$_source/dots/.config/quickshell/ii/." "$install_root/"
+  install -Dm644 "$pad_source/nabu/osk/end4-osk-session.qml" \
+    "$install_root/end4-osk-session.qml"
+  install -Dm644 "$pad_source/nabu/osk/end4-osk-greeter.qml" \
+    "$install_root/end4-osk-greeter.qml"
+  install -Dm755 "$pad_source/nabu/osk/noctalia-pad-osk" \
+    "$pkgdir/usr/bin/noctalia-pad-osk"
+  install -Dm644 "$pad_source/nabu/osk/noctalia-pad-osk.service" \
+    "$pkgdir/usr/lib/systemd/user/noctalia-pad-osk.service"
+  install -Dm644 "$_source/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

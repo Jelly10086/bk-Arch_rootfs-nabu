@@ -1,6 +1,5 @@
-bk-shell
-bk-keyboard
-bk-greeter
+noctalia-greeter-pad
+noctalia-pad-osk
 power-profiles-daemon
 iio-sensor-proxy
 upower

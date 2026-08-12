@@ -1,10 +1,10 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=16
-pkgdesc="XiaomiPad5 identity, users, fonts, niri and session defaults"
+pkgrel=29
+pkgdesc="XiaomiPad5 identity, fonts, Hyprland and Noctalia defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
-depends=('fontconfig' 'noto-fonts-emoji' 'sudo' 'ttf-dejavu' 'zsh')
+depends=('dconf' 'fontconfig' 'noto-fonts-emoji' 'sudo' 'ttf-dejavu' 'zsh')
 install=bk-defaults.install
 backup=('etc/fstab' 'etc/hostname' 'etc/sudoers.d/10-wheel')
 source=(
@@ -19,8 +19,14 @@ sha256sums=(
 package() {
   install -d "$pkgdir"
   cp -a --no-preserve=ownership "$startdir/files/." "$pkgdir/"
+  find "$pkgdir" -type d -exec chmod 0755 {} +
+  chmod 0750 "$pkgdir/etc/sudoers.d"
   chmod 0755 "$pkgdir/usr/lib/bk/apply-defaults"
-
+  _pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+  install -Dm644 "$_pad_source/nabu/config/hyprland.conf" \
+    "$pkgdir/etc/skel/.config/hypr/hyprland.conf"
+  install -Dm644 "$_pad_source/nabu/config/noctalia.toml" \
+    "$pkgdir/etc/skel/.config/noctalia/config.toml"
   install -d "$pkgdir/etc/fonts/conf.d"
   ln -s ../conf.avail/60-bk-fonts.conf \
     "$pkgdir/etc/fonts/conf.d/60-bk-fonts.conf"
@@ -47,7 +53,9 @@ package() {
 
   install -Dm644 /dev/stdin "$pkgdir/usr/lib/bk/build-info" <<EOF
 distro.commit=${BK_DISTRO_COMMIT:-unknown}
-shell.commit=${BK_SHELL_COMMIT:-de5680a4da992e0beca052c5e151bcf0d829efb6}
+noctalia.commit=${BK_NOCTALIA_COMMIT:-unknown}
+noctalia-greeter.commit=${BK_NOCTALIA_GREETER_COMMIT:-unknown}
+noctalia-pad.commit=${BK_NOCTALIA_PAD_COMMIT:-unknown}
 kernel.source=bf584639297f67a855ac14a381c18576b7c77843
 kernel.release=${BK_KERNEL_RELEASE:-unknown}
 font.rubik.sha256=795c00e6d23c46ef5652c5c5923813020c76c6106f5774cb11cf7ec94872db5e

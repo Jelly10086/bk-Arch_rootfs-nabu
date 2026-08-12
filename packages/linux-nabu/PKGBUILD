@@ -2,7 +2,7 @@
 pkgbase=linux-nabu
 pkgname=('linux-nabu' 'linux-nabu-headers')
 pkgver=6.18.42
-pkgrel=4
+pkgrel=7
 pkgdesc="Linux kernel for Xiaomi Pad 5 (nabu)"
 arch=('aarch64')
 url="https://github.com/TwinbornPlate75/linux-nabu"
@@ -15,8 +15,9 @@ _kernelrelease=6.18.42-sm8150
 _dtbfile=qcom/sm8150-xiaomi-nabu.dtb
 export LOCALVERSION=
 source=('bk-sandbox.config' 'bk-nabu-prune.config'
-        'idtp9418-gpio-consumer.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP')
+        'idtp9418-gpio-consumer.patch'
+        'nt36523-firmware-retry.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
 _linux_source=${BK_LINUX_SOURCE:-"$startdir/../../cache/sources/git/linux-nabu"}
 
 _kmake() {
@@ -58,6 +59,7 @@ prepare() {
 
   cd "$srcdir/$_srcname"
   patch -Np1 -i "$srcdir/idtp9418-gpio-consumer.patch"
+  patch -Np1 -i "$srcdir/nt36523-firmware-retry.patch"
   _kmake mrproper
 
   _kmake defconfig
@@ -184,6 +186,32 @@ package_linux-nabu-headers() {
   install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
   mkdir -p "$builddir/arch/arm"
   cp -t "$builddir/arch/arm" -a --no-preserve=ownership arch/arm/include
+
+  # Kbuild executes these tools on the machine using the headers.  A host
+  # cross-build therefore has to replace its x86_64 build tools with arm64
+  # versions in the target headers package.
+  if [[ ${BK_HOST_CROSS:-0} == 1 ]]; then
+    local target_cc=${CROSS_COMPILE:-aarch64-linux-gnu-}gcc
+    local -a target_cflags=(
+      -Wall -Wmissing-prototypes -Wstrict-prototypes -O2
+      -fomit-frame-pointer -std=gnu11 -I "$builddir/scripts/include"
+    )
+    "$target_cc" "${target_cflags[@]}" \
+      -o "$builddir/scripts/basic/fixdep" \
+      "$builddir/scripts/basic/fixdep.c"
+
+    local source
+    for source in modpost file2alias sumversion symsearch; do
+      "$target_cc" "${target_cflags[@]}" -c \
+        -o "$builddir/scripts/mod/$source.o" \
+        "$builddir/scripts/mod/$source.c"
+    done
+    "$target_cc" -o "$builddir/scripts/mod/modpost" \
+      "$builddir/scripts/mod/modpost.o" \
+      "$builddir/scripts/mod/file2alias.o" \
+      "$builddir/scripts/mod/sumversion.o" \
+      "$builddir/scripts/mod/symsearch.o"
+  fi
 
   while IFS= read -r -d '' file; do
     install -Dm644 "$file" "$builddir/$file"

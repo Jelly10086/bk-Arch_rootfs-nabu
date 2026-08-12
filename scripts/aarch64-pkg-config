@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+sysroot=${BK_CROSS_SYSROOT:-"$project_dir/build/builder-root"}
+
+export PKG_CONFIG_SYSROOT_DIR="$sysroot"
+export PKG_CONFIG_LIBDIR="$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig"
+exec /usr/bin/pkgconf "$@"

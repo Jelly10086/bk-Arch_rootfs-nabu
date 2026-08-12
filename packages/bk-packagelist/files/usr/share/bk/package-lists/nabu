@@ -4,5 +4,7 @@ linux-firmware-xiaomi-nabu=25.04.26-1
 nabu-pmac=1-2
 qrtr
 rmtfs
+tqftpserv
 upower
 iio-sensor-proxy
+wireless-regdb

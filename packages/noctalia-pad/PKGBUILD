@@ -1,0 +1,52 @@
+pkgname=noctalia-pad
+pkgver=5.0.0_beta.8.r0
+pkgrel=4
+pkgdesc='Noctalia v5 shell with Xiaomi Pad 5 integration'
+arch=('aarch64')
+url='https://github.com/Jelly10086/noctalia-pad'
+license=('MIT')
+provides=('noctalia')
+conflicts=('noctalia' 'noctalia-git')
+depends=(
+  'bash' 'cairo' 'curl' 'fontconfig' 'freetype2' 'git' 'glib2' 'harfbuzz'
+  'hicolor-icon-theme' 'jemalloc' 'libglvnd' 'libical' 'libjxl' 'libpipewire'
+  'libqalculate' 'librsvg' 'libsecret' 'libsndfile' 'libsodium' 'libwebp'
+  'libwireplumber' 'libxkbcommon' 'libxml2' 'md4c' 'pam' 'polkit' 'pango'
+  'sdbus-cpp' 'tomlplusplus' 'wayland'
+)
+optdepends=('power-profiles-daemon: power profile management' 'upower: battery integration')
+makedepends=('meson' 'ninja' 'nlohmann-json' 'pkgconf' 'stb' 'wayland-protocols')
+
+_commit=${BK_NOCTALIA_PAD_COMMIT:?BK_NOCTALIA_PAD_COMMIT is required}
+_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+
+prepare() {
+  [[ -d $_source/.git ]] || { printf 'Noctalia checkout not found: %s\n' "$_source" >&2; return 1; }
+  [[ $(git -C "$_source" rev-parse HEAD) == "$_commit" ]] || { echo 'Noctalia commit mismatch' >&2; return 1; }
+  cp -a --reflink=auto --no-preserve=ownership "$_source" "$srcdir/noctalia"
+}
+
+build() {
+  CXXFLAGS+=' -Wno-unused-result'
+  if [[ ${BK_HOST_CROSS:-0} == 1 ]]; then
+    local setup_mode=()
+    [[ ! -f build-release/meson-private/coredata.dat ]] || setup_mode=(--reconfigure)
+    meson setup noctalia build-release "${setup_mode[@]}" \
+      --cross-file "$BK_CROSS_FILE" --prefix=/usr --buildtype=plain \
+      -Dcpp_args="['--sysroot=$BK_CROSS_SYSROOT', '-B$BK_CROSS_SYSROOT/usr/lib/', '-include', '$startdir/../../scripts/cross-cxx-compat.h']" \
+      -Db_ndebug=true -Dtests=disabled
+  else
+    arch-meson noctalia build-release -Db_ndebug=true -Dtests=disabled
+  fi
+  meson compile -C build-release
+}
+
+package() {
+  meson install -C build-release --destdir "$pkgdir"
+  rm -rf "$pkgdir/usr/share/noctalia/assets/templates/niri"
+  sed -i \
+    -e '/^\[catalog\.niri\]/,/^$/d' \
+    -e '/^\[templates\.niri\]/,/^$/d' \
+    "$pkgdir/usr/share/noctalia/assets/templates/builtin.toml"
+  install -Dm644 noctalia/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

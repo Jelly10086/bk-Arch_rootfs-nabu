@@ -38,13 +38,13 @@ rootfs_image="$project_dir/output/bk-nabu-rootfs.img"
 rootfs_bytes=$(du -s -B1 "$rootfs" | awk '{print $1}')
 image_bytes=$(( (rootfs_bytes + 1610612735) / 268435456 * 268435456 ))
 truncate -s "$image_bytes" "$rootfs_image"
-mkfs.ext4 -F -L linux -d "$rootfs" "$rootfs_image"
+mkfs.ext4 -F -O ^orphan_file -L linux -d "$rootfs" "$rootfs_image"
 e2fsck -fn "$rootfs_image"
 
 grep -q '^include themes/rEFInd-tokyo-night/theme.conf$' "$esp/EFI/BOOT/refind.conf"
 
 esp_image="$project_dir/output/esp.img"
 truncate -s 350M "$esp_image"
-mkfs.fat -F32 -n ESPNABU "$esp_image"
+mkfs.fat -F32 -S 4096 -n ESPNABU "$esp_image"
 mcopy -s -i "$esp_image" "$esp"/* ::
 fsck.fat -vn "$esp_image"

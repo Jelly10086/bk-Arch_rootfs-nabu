@@ -1,0 +1,78 @@
+pkgname=noctalia-greeter-pad
+pkgver=1.2.1.r0
+pkgrel=4
+pkgdesc='Noctalia Greeter with integrated Xiaomi Pad touch keyboard'
+arch=('aarch64')
+url='https://github.com/Jelly10086/noctalia-pad'
+license=('MIT')
+provides=('noctalia-greeter')
+conflicts=('noctalia-greeter')
+depends=(
+  'cairo' 'dbus' 'fontconfig' 'freetype2' 'glib2' 'greetd' 'libglvnd'
+  'libinput' 'librsvg' 'libwebp' 'libxkbcommon' 'pango' 'polkit'
+  'tomlplusplus' 'wayland' 'wlroots0.20' 'hyprland' 'noctalia-pad-osk'
+)
+makedepends=('meson' 'ninja' 'nlohmann-json' 'pkgconf' 'stb' 'wayland-protocols')
+
+_commit=${BK_NOCTALIA_PAD_COMMIT:?BK_NOCTALIA_PAD_COMMIT is required}
+_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+
+prepare() {
+  [[ -d $_source/.git ]] || { printf 'Noctalia checkout not found: %s\n' "$_source" >&2; return 1; }
+  [[ $(git -C "$_source" rev-parse HEAD) == "$_commit" ]] || { echo 'Noctalia commit mismatch' >&2; return 1; }
+  cp -a --reflink=auto --no-preserve=ownership "$_source/nabu/noctalia-greeter" "$srcdir/noctalia-greeter"
+}
+
+build() {
+  if [[ ${BK_HOST_CROSS:-0} == 1 ]]; then
+    local setup_mode=()
+    [[ ! -f build/meson-private/coredata.dat ]] || setup_mode=(--reconfigure)
+    meson setup noctalia-greeter build "${setup_mode[@]}" \
+      --cross-file "$BK_CROSS_FILE" --prefix=/usr --buildtype=plain \
+      -Dcpp_args="['--sysroot=$BK_CROSS_SYSROOT', '-B$BK_CROSS_SYSROOT/usr/lib/', '-include', '$startdir/../../scripts/cross-cxx-compat.h']" \
+      -Db_ndebug=true
+  else
+    arch-meson noctalia-greeter build --buildtype=plain -Db_ndebug=true
+  fi
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  sed -i 's/--session niri/--session Hyprland/g' \
+    "$pkgdir/usr/share/noctalia-greeter/greetd_setup_lib.sh"
+  install -Dm644 noctalia-greeter/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/noctalia-greeter/config.toml" <<'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/bin/noctalia-greeter-end4-session"
+user = "greeter"
+EOF
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/sysusers.d/noctalia-greeter.conf" <<'EOF'
+u greeter - "Noctalia Greeter" /var/lib/noctalia-greeter /usr/bin/nologin
+EOF
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/system/greetd.service.d/20-noctalia-greeter.conf" <<'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/greetd --config /usr/lib/noctalia-greeter/config.toml
+EOF
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/noctalia-greeter/greeter.toml" <<'EOF'
+[session]
+default = "Hyprland"
+
+[user]
+default = "unkn0wn"
+
+[appearance]
+font_family = "Rubik"
+scheme = "Tokyo-Night"
+EOF
+  _pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+  install -Dm755 "$_pad_source/nabu/greeter/noctalia-greeter-end4-session" \
+    "$pkgdir/usr/bin/noctalia-greeter-end4-session"
+  install -Dm644 "$_pad_source/nabu/greeter/hyprland-end4.conf" \
+    "$pkgdir/usr/share/noctalia-greeter/hyprland-end4.conf"
+}

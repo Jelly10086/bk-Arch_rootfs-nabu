@@ -50,6 +50,55 @@ ukify inspect "$uki" | grep -A5 '^\.uname:' | grep -qx "    $expected_release"
 ukify inspect "$uki" | grep -q '^\.dtb:'
 ukify inspect "$uki" | grep -q '^\.initrd:'
 
+grep -q 'exec-once = noctalia' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q 'exec-once = systemctl --user start noctalia-pad-osk.service' \
+  "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q 'gaps_in = 8' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^monitor = DSI-1, preferred, auto, 1.6, transform, 3$' \
+  "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^        output = DSI-1$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^        transform = 3$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^    hide_on_touch = true$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^windowrule = float on, match:class \.\*$' \
+  "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q 'noctalia-pad-osk toggle' "$rootfs/home/unkn0wn/.config/noctalia/config.toml"
+grep -q '^glyph = "keyboard"$' "$rootfs/home/unkn0wn/.config/noctalia/config.toml"
+grep -q 'command = "/usr/bin/noctalia-greeter-end4-session"' \
+  "$rootfs/usr/lib/noctalia-greeter/config.toml"
+grep -q 'command = "/usr/bin/noctalia-greeter-end4-session"' \
+  "$rootfs/etc/greetd/config.toml"
+grep -q 'user = "greeter"' "$rootfs/etc/greetd/config.toml"
+grep -q '^ExecStart=/usr/bin/greetd --config /usr/lib/noctalia-greeter/config.toml$' \
+  "$rootfs/usr/lib/systemd/system/greetd.service.d/20-noctalia-greeter.conf"
+[[ -f $rootfs/usr/share/icons/Papirus-Dark/index.theme ]]
+[[ -f $rootfs/usr/share/noctalia-greeter/greeter.toml ]]
+grep -q '^monitor = DSI-1, preferred, auto, 1.6, transform, 3$' \
+  "$rootfs/usr/share/noctalia-greeter/hyprland-end4.conf"
+grep -q '^        transform = 3$' \
+  "$rootfs/usr/share/noctalia-greeter/hyprland-end4.conf"
+! grep -q -- '--session niri' "$rootfs/usr/share/noctalia-greeter/greetd_setup_lib.sh"
+[[ -f $rootfs/usr/lib/systemd/user/noctalia-pad-osk.service ]]
+grep -q 'exec qs -p' "$rootfs/usr/bin/noctalia-pad-osk"
+grep -q 'quickshell:oskToggle' "$rootfs/usr/bin/noctalia-pad-osk"
+for end4_file in \
+  modules/ii/onScreenKeyboard/OnScreenKeyboard.qml \
+  modules/ii/onScreenKeyboard/OskContent.qml \
+  modules/ii/onScreenKeyboard/OskKey.qml \
+  modules/ii/onScreenKeyboard/layouts.js \
+  services/Ydotool.qml; do
+  cmp \
+    "$rootfs/usr/share/noctalia-pad/end4-osk/ii/$end4_file" \
+    "$project_dir/cache/sources/git/dots-hyprland/dots/.config/quickshell/ii/$end4_file"
+done
+! find "$rootfs/usr/bin" -maxdepth 1 -iname 'wvkbd*' -print -quit | grep -q .
+! find "$rootfs/etc" "$rootfs/usr/lib/systemd" "$rootfs/usr/share" -xdev \
+  \( -iname dms -o -iname 'dms-*' -o -iname '*-dms' \
+     -o -iname dank -o -iname 'dank-*' -o -iname '*-dank' \
+     -o -iname niri -o -iname 'niri-*' -o -iname '*-niri' \
+     -o -iname 'bk-keyboard*' -o -iname 'bk-shell*' \
+     -o -iname 'wifi-diag*' \) \
+  -print -quit | grep -q .
+
 systemd-nspawn --quiet --directory="$rootfs" --register=no \
   --setenv=BK_CJK_PATH="$expected_cjk_path" \
   /usr/bin/bash -lc '
@@ -58,29 +107,37 @@ systemd-nspawn --quiet --directory="$rootfs" --register=no \
     test "$(getent passwd unkn0wn | cut -d: -f7)" = /bin/zsh
     passwd -S root | grep -q "^root L"
     id -nG unkn0wn | tr " " "\n" | grep -qx wheel
-    pacman -Qk bk-defaults bk-log bk-packagelist bk-shell bk-keyboard bk-greeter linux-nabu yay
-    test "$(pacman -Qoq /usr/bin/dms)" = bk-shell
-    test "$(pacman -Qoq /usr/bin/bk-keyboard)" = bk-keyboard
-    test "$(pacman -Qoq /usr/bin/bk-greeter)" = bk-greeter
-    test -x /usr/bin/dms
-    test -x /usr/bin/bk-greeter
-    runuser -u unkn0wn -- dms version | grep -q "0.1.0-bk"
-    runuser -u unkn0wn -- dms keyboard --help | grep -q "type"
-    niri validate --config /usr/share/bk-greeter/niri.kdl
-    grep -qx "command = \"niri --session --config /usr/share/bk-greeter/niri.kdl\"" \
-      /usr/lib/bk-greeter/config.toml
-    fc-match -f "%{family}\n" Rubik | grep -q Rubik
+    id -nG unkn0wn | tr " " "\n" | grep -qx input
+    id -nG unkn0wn | tr " " "\n" | grep -qx greeter
+    pacman -Qk bk-defaults bk-log bk-packagelist noctalia-pad noctalia-greeter-pad noctalia-pad-osk linux-nabu yay
+    pacman -Q hyprland noctalia-pad noctalia-greeter-pad noctalia-pad-osk \
+      quickshell ydotool ttf-material-symbols-variable papirus-icon-theme >/dev/null
+    ! pacman -Q niri >/dev/null 2>&1
+    ! pacman -Q bk-keyboard >/dev/null 2>&1
+    test -x /usr/bin/Hyprland
+    test -x /usr/bin/noctalia
+    test -x /usr/bin/noctalia-greeter
+    test -x /usr/bin/noctalia-greeter-session
+    test -x /usr/bin/noctalia-greeter-end4-session
+    test -x /usr/bin/noctalia-pad-osk
+    test -x /usr/bin/qs
+    test -x /usr/bin/ydotool
+    test -x /usr/bin/ydotoold
+    id -nG greeter | tr " " "\n" | grep -qx input
+    id -nG greeter | tr " " "\n" | grep -qx video
+    id -nG greeter | tr " " "\n" | grep -qx render
+    test "$(gsettings get org.gnome.desktop.interface icon-theme)" = "'Papirus-Dark'"
+    [[ "$(fc-match -f "%{family}\n" Rubik)" == *Rubik* ]]
     test "$(fc-match -f "%{file}" :lang=zh)" = "$BK_CJK_PATH"
-    fc-match -f "%{family}\n" emoji | grep -q "Noto Color Emoji"
+    [[ "$(fc-match -f "%{family}\n" emoji)" == *"Noto Color Emoji"* ]]
     test "$(fc-match -f "%{family}\n" monospace)" != Rubik
   '
 
-for service in NetworkManager bluetooth greetd nabu-pmac rmtfs; do
+for service in NetworkManager bluetooth greetd nabu-pmac rmtfs tqftpserv; do
   systemctl --root="$rootfs" is-enabled "$service.service" >/dev/null
 done
-[[ $(systemctl --root="$rootfs" --global is-enabled bk-shell.service) == enabled ]]
-[[ $(systemctl --root="$rootfs" --global is-enabled bk-shell-stock.service \
-  2>/dev/null || true) == disabled ]]
+[[ $(systemctl --root="$rootfs" --global is-enabled noctalia-pad-osk.service) == enabled ]]
+[[ $(systemctl --root="$rootfs" --global is-enabled ydotool.service) == enabled ]]
 
 headers_package=$(find "$project_dir/output/packages" -maxdepth 1 -type f \
   -name 'linux-nabu-headers-*.pkg.tar.*' -print -quit)
@@ -94,7 +151,11 @@ done
 e2fsck -fn "$project_dir/output/bk-nabu-rootfs.img"
 [[ $(tune2fs -l "$project_dir/output/bk-nabu-rootfs.img" | awk -F: \
   '$1 == "Filesystem volume name" { gsub(/^[[:space:]]+/, "", $2); print $2 }') == linux ]]
-fsck.fat -vn "$project_dir/output/esp.img"
+! tune2fs -l "$project_dir/output/bk-nabu-rootfs.img" \
+  | awk -F: '$1 == "Filesystem features" { print $2 }' \
+  | grep -qw orphan_file
+fsck.fat -vn "$project_dir/output/esp.img" \
+  | grep -q '^      4096 bytes per logical sector$'
 mtype -i "$project_dir/output/esp.img" ::/EFI/BOOT/refind.conf \
   | grep -q '^include themes/rEFInd-tokyo-night/theme.conf$'
 (

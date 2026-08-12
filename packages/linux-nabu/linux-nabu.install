@@ -8,7 +8,9 @@ regenerate_uki() {
   [[ -f /boot/vmlinuz-$kernver ]] || return 0
   mountpoint -q /boot/efi 2>/dev/null || return 0
   install -d /etc/cmdline.d
-  printf 'root=PARTLABEL=linux rw\n' >/etc/cmdline.d/root.conf
+  printf '%s\n' \
+    'root=PARTLABEL=linux rw console=tty0 fbcon=rotate:1 systemd.show_status=yes loglevel=7' \
+    >/etc/cmdline.d/root.conf
   mkinitcpio -P
 }
 

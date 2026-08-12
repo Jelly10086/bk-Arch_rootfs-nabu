@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+sysroot=${BK_CROSS_SYSROOT:-"$project_dir/build/builder-root"}
+cross_dir="$project_dir/build/cross"
+cross_file="$cross_dir/aarch64-archlinux.ini"
+makepkg_config="$cross_dir/makepkg-aarch64.conf"
+tool_bin="$cross_dir/bin"
+
+for command_name in \
+  aarch64-linux-gnu-ar aarch64-linux-gnu-gcc aarch64-linux-gnu-g++ \
+  aarch64-linux-gnu-strip ccache meson ninja pkgconf wayland-scanner; do
+  command -v "$command_name" >/dev/null || {
+    printf 'missing host cross-build dependency: %s\n' "$command_name" >&2
+    exit 1
+  }
+done
+
+[[ -f $sysroot/usr/lib/pkgconfig/wayland-client.pc ]] || {
+  printf 'AArch64 sysroot is incomplete: %s\n' "$sysroot" >&2
+  printf 'Run scripts/prepare-builder once to provision target libraries.\n' >&2
+  exit 1
+}
+
+mkdir -p "$cross_dir" "$tool_bin" "$project_dir/cache/ccache-cross"
+
+# makepkg's tidy helpers call binutils by their unprefixed names. Put only
+# AArch64 binutils ahead of PATH so target binaries are stripped correctly.
+for tool_name in ar nm objcopy objdump ranlib readelf size strings strip; do
+  ln -sfn "$(command -v "aarch64-linux-gnu-$tool_name")" "$tool_bin/$tool_name"
+done
+
+sed \
+  -e 's/^CARCH=.*/CARCH="aarch64"/' \
+  -e 's/^CHOST=.*/CHOST="aarch64-unknown-linux-gnu"/' \
+  -e 's/^BUILDENV=.*/BUILDENV=(!distcc color !ccache check !sign)/' \
+  -e "s|^PKGEXT=.*|PKGEXT='.pkg.tar.zst'|" \
+  /etc/makepkg.conf >"$makepkg_config"
+cat >>"$makepkg_config" <<'EOF'
+CPPFLAGS=""
+CFLAGS="-march=armv8-a -O2 -pipe -fstack-protector-strong -fno-plt -fexceptions -Wp,-D_FORTIFY_SOURCE=3 -Wformat -Werror=format-security -fstack-clash-protection -fno-omit-frame-pointer"
+CXXFLAGS="$CFLAGS -Wp,-D_GLIBCXX_ASSERTIONS"
+LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,pack-relative-relocs"
+STRIP=aarch64-linux-gnu-strip
+OBJCOPY=aarch64-linux-gnu-objcopy
+EOF
+
+cat >"$cross_file" <<EOF
+[binaries]
+c = ['ccache', 'aarch64-linux-gnu-gcc']
+cpp = ['ccache', 'aarch64-linux-gnu-g++']
+ar = 'aarch64-linux-gnu-ar'
+strip = 'aarch64-linux-gnu-strip'
+pkg-config = '$project_dir/scripts/aarch64-pkg-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
+
+[properties]
+needs_exe_wrapper = true
+sys_root = '$sysroot'
+pkg_config_libdir = ['$sysroot/usr/lib/pkgconfig', '$sysroot/usr/share/pkgconfig']
+
+[built-in options]
+c_args = ['--sysroot=$sysroot', '-B$sysroot/usr/lib/']
+cpp_args = ['--sysroot=$sysroot', '-B$sysroot/usr/lib/', '-include', '$project_dir/scripts/cross-cxx-compat.h']
+c_link_args = ['--sysroot=$sysroot', '-B$sysroot/usr/lib/', '-L$sysroot/usr/lib', '-Wl,-rpath-link,$sysroot/usr/lib']
+cpp_link_args = ['--sysroot=$sysroot', '-B$sysroot/usr/lib/', '-L$sysroot/usr/lib', '-Wl,-rpath-link,$sysroot/usr/lib']
+EOF
+
+printf '%s\n%s\n' "$cross_file" "$makepkg_config"

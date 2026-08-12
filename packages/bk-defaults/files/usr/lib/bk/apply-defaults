@@ -34,7 +34,7 @@ if ! getent passwd unkn0wn >/dev/null; then
 fi
 
 extra_groups=(wheel)
-for group in audio video input; do
+for group in audio video input greeter; do
   getent group "$group" >/dev/null && extra_groups+=("$group")
 done
 groups_csv=$(IFS=,; echo "${extra_groups[*]}")
@@ -49,6 +49,37 @@ cp -a -n /etc/skel/. /home/unkn0wn/
 chown -R unkn0wn:users /home/unkn0wn
 chmod 0750 /home/unkn0wn
 chmod 0440 /etc/sudoers.d/10-wheel
+
+dconf update
+
+if [[ -f /usr/lib/noctalia-greeter/config.toml ]]; then
+  install -Dm0644 /usr/lib/noctalia-greeter/config.toml /etc/greetd/config.toml
+fi
+
+if getent passwd greeter >/dev/null && [[ -f /usr/share/noctalia-greeter/greeter.toml ]]; then
+  greeter_groups=()
+  for group in input video render; do
+    getent group "$group" >/dev/null && greeter_groups+=("$group")
+  done
+  if ((${#greeter_groups[@]})); then
+    greeter_groups_csv=$(IFS=,; echo "${greeter_groups[*]}")
+    usermod --append --groups "$greeter_groups_csv" greeter
+  fi
+  install -d -m0750 -o greeter -g greeter /var/lib/noctalia-greeter
+  install -m0644 -o greeter -g greeter /usr/share/noctalia-greeter/greeter.toml \
+    /var/lib/noctalia-greeter/greeter.toml
+fi
+
+if [[ -x /usr/share/noctalia-greeter/setup_greeter_system.sh ]]; then
+  GREETER_USER=greeter /usr/share/noctalia-greeter/setup_greeter_system.sh
+fi
+
+install -d -m0755 -o unkn0wn -g users \
+  /home/unkn0wn/.config/hypr /home/unkn0wn/.config/noctalia
+install -m0644 -o unkn0wn -g users \
+  /etc/skel/.config/hypr/hyprland.conf /home/unkn0wn/.config/hypr/hyprland.conf
+install -m0644 -o unkn0wn -g users \
+  /etc/skel/.config/noctalia/config.toml /home/unkn0wn/.config/noctalia/config.toml
 
 uid=$(id -u unkn0wn)
 [[ $uid == 1000 ]] || { echo "bk-defaults: unexpected UID $uid" >&2; exit 1; }

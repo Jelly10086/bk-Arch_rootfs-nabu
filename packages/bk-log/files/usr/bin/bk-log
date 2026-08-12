@@ -74,7 +74,7 @@ capture kernel-modules lsmod
 capture packages pacman -Q
 capture failed-units systemctl --failed --no-pager
 capture system-units systemctl status NetworkManager bluetooth systemd-resolved rmtfs pd-mapper qrtr-ns greetd --no-pager
-capture user-units systemctl --user status niri dms bk-shell fcitx5 --no-pager
+capture user-units systemctl --user status noctalia-pad-osk fcitx5 --no-pager
 capture session-journal journalctl --user --boot --no-pager --since "$since"
 
 capture drm-sysfs find /sys/class/drm -maxdepth 3 -type f -name status -o -name modes
@@ -99,10 +99,9 @@ capture audio wpctl status
 capture audio-devices pactl list
 capture wireplumber-journal journalctl --user --boot --no-pager -u wireplumber
 capture pipewire-journal journalctl --user --boot --no-pager -u pipewire -u pipewire-pulse
-capture niri niri msg version
-capture niri-outputs niri msg outputs
-capture niri-journal journalctl --user --boot --no-pager -u niri
-capture shell-journal journalctl --user --boot --no-pager -u dms -u bk-shell
+capture hyprland hyprctl version
+capture hyprland-monitors hyprctl monitors all
+capture shell-journal journalctl --user --boot --no-pager -u noctalia-pad-osk
 capture greeter-journal journalctl --boot --no-pager -u greetd
 capture input-method-journal journalctl --user --boot --no-pager -u fcitx5
 capture_shell filesystems 'findmnt --real --output SOURCE,TARGET,FSTYPE,OPTIONS; lsblk --output NAME,TYPE,SIZE,FSTYPE,LABEL,PARTLABEL,MOUNTPOINTS'

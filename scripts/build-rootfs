@@ -32,15 +32,44 @@ mapfile -t packages < <(
 )
 
 pacman_config="$rootfs/etc/pacman-bk.conf"
-cp "$rootfs/etc/pacman.conf" "$pacman_config"
-printf '\n%s\n' \
-  '[bk]' \
-  'SigLevel = Optional TrustAll' \
-  'Server = file:///mnt' \
-  '[nabu]' \
-  'SigLevel = Never' \
-  'Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo' \
-  >>"$pacman_config"
+awk '
+  BEGIN {
+    inserted = 0
+    skip_local_repo = 0
+  }
+  /^\[(bk|nabu)\]$/ {
+    skip_local_repo = 1
+    next
+  }
+  /^\[/ {
+    skip_local_repo = 0
+  }
+  skip_local_repo {
+    next
+  }
+  !inserted && /^\[(core|extra|alarm|aur)\]$/ {
+    print "[bk]"
+    print "SigLevel = Optional TrustAll"
+    print "Server = file:///mnt"
+    print ""
+    inserted = 1
+  }
+  {
+    print
+  }
+  END {
+    if (!inserted) {
+      print ""
+      print "[bk]"
+      print "SigLevel = Optional TrustAll"
+      print "Server = file:///mnt"
+    }
+    print ""
+    print "[nabu]"
+    print "SigLevel = Never"
+    print "Server = https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo"
+  }
+' "$rootfs/etc/pacman.conf" >"$pacman_config"
 
 systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
   /usr/bin/bash -lc '
@@ -81,7 +110,7 @@ fi
 
 systemd-nspawn --quiet --directory="$rootfs" --register=no --setenv=HOME=/root \
   /usr/bin/bash -lc \
-    'systemd-tmpfiles --create; /usr/lib/bk/apply-defaults; fc-cache -f; mkinitcpio -p linux-nabu'
+    'systemd-sysusers; systemd-tmpfiles --create; /usr/lib/bk/apply-defaults; fc-cache -f; mkinitcpio -p linux-nabu'
 
 systemctl --root="$rootfs" preset-all
 systemctl --root="$rootfs" --global preset-all

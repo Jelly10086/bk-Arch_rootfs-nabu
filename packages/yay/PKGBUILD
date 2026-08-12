@@ -12,10 +12,18 @@ sha256sums=('b77454bce87110180a1b6664c2d260de78124c9894b71101610ba84f551eb0d0')
 
 build() {
   cd "$pkgname-$pkgver"
+  if [[ ${BK_HOST_CROSS:-0} == 1 ]]; then
+    export GOOS=linux GOARCH=arm64 CGO_ENABLED=1
+    export CC=aarch64-linux-gnu-gcc
+    export CXX=aarch64-linux-gnu-g++
+    export CGO_CFLAGS="${CFLAGS} --sysroot=$BK_CROSS_SYSROOT -B$BK_CROSS_SYSROOT/usr/lib/"
+    export CGO_CXXFLAGS="${CXXFLAGS} --sysroot=$BK_CROSS_SYSROOT -B$BK_CROSS_SYSROOT/usr/lib/"
+    export CGO_LDFLAGS="${LDFLAGS} --sysroot=$BK_CROSS_SYSROOT -B$BK_CROSS_SYSROOT/usr/lib/ -L$BK_CROSS_SYSROOT/usr/lib -Wl,-rpath-link,$BK_CROSS_SYSROOT/usr/lib"
+  fi
   export CGO_CPPFLAGS="${CPPFLAGS}"
-  export CGO_CFLAGS="${CFLAGS}"
-  export CGO_CXXFLAGS="${CXXFLAGS}"
-  export CGO_LDFLAGS="${LDFLAGS}"
+  export CGO_CFLAGS="${CGO_CFLAGS:-$CFLAGS}"
+  export CGO_CXXFLAGS="${CGO_CXXFLAGS:-$CXXFLAGS}"
+  export CGO_LDFLAGS="${CGO_LDFLAGS:-$LDFLAGS}"
   export GOFLAGS='-buildmode=pie -trimpath -mod=readonly -modcacherw'
   make VERSION="$pkgver" PREFIX=/usr build
 }

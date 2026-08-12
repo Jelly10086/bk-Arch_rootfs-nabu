@@ -2,55 +2,11 @@
 set -euo pipefail
 
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
-workspace_parent=$(dirname "$project_dir")
-builder_root=$("$project_dir/scripts/prepare-builder")
 package_output="$project_dir/output/packages"
-shell_dir="$workspace_parent/bk-shell"
-mkosi_version=$(mkosi --version | awk '{print $2}')
-distro_commit=$(git -C "$project_dir" rev-parse HEAD)
-shell_commit=$(git -C "$shell_dir" rev-parse HEAD)
-kernel_release=6.18.42-sm8150
 
-mkdir -p "$package_output" "$project_dir/cache/sources/makepkg" \
-  "$project_dir/cache/ccache" \
-  "$project_dir/cache/go/build" "$project_dir/cache/go/pkg/mod" \
-  "$project_dir/build/makepkg" "$project_dir/logs/makepkg"
+mkdir -p "$package_output"
 
-build_one() {
-  local package_dir=$1
-  local container_dir="/workspace/bk-Arch_nabu/packages/$package_dir"
-  printf 'Building %s in AArch64 builder\n' "$package_dir"
-  bwrap \
-    --unshare-user --uid 1000 --gid 1000 \
-    --unshare-pid --unshare-uts --unshare-ipc --share-net \
-    --die-with-parent \
-    --bind "$builder_root" / \
-    --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-    --bind "$workspace_parent" /workspace \
-    --setenv HOME /tmp/bk-home \
-    --setenv PKGDEST /workspace/bk-Arch_nabu/output/packages \
-    --setenv SRCDEST /workspace/bk-Arch_nabu/cache/sources/makepkg \
-    --setenv BUILDDIR /workspace/bk-Arch_nabu/build/makepkg \
-    --setenv LOGDEST /workspace/bk-Arch_nabu/logs/makepkg \
-    --setenv GOCACHE /workspace/bk-Arch_nabu/cache/go/build \
-    --setenv GOMODCACHE /workspace/bk-Arch_nabu/cache/go/pkg/mod \
-    --setenv PACKAGER 'BK nabu build <noreply@localhost>' \
-    --setenv MAKEFLAGS "-j8 -l8" \
-    --setenv CCACHE_DIR /workspace/bk-Arch_nabu/cache/ccache \
-    --setenv CCACHE_BASEDIR /workspace/bk-Arch_nabu \
-    --setenv CCACHE_COMPILERCHECK content \
-    --setenv BK_SHELL_SOURCE /workspace/bk-shell \
-    --setenv BK_LINUX_SOURCE /workspace/bk-Arch_nabu/cache/sources/git/linux-nabu \
-    --setenv BK_LINUX_PREBUILT "${linux_prebuilt:-}" \
-    --setenv BK_DISTRO_COMMIT "$distro_commit" \
-    --setenv BK_SHELL_COMMIT "$shell_commit" \
-    --setenv BK_MKOSI_VERSION "$mkosi_version" \
-    --setenv BK_KERNEL_RELEASE "$kernel_release" \
-    --chdir "$container_dir" \
-    /usr/bin/bash -lc 'mkdir -p "$HOME"; exec makepkg --noconfirm --cleanbuild --clean --force --nodeps'
-}
-
-all_packages=(bk-packagelist bk-log bk-defaults bk-shell yay linux-nabu)
+all_packages=(bk-packagelist bk-log bk-defaults noctalia-pad noctalia-greeter-pad noctalia-pad-osk tqftpserv yay linux-nabu)
 if (($#)); then
   packages_to_build=("$@")
 else
@@ -62,27 +18,29 @@ for package_dir in "${packages_to_build[@]}"; do
     *" $package_dir "*) ;;
     *) printf 'unknown package: %s\n' "$package_dir" >&2; exit 2 ;;
   esac
-  if [[ $package_dir == linux-nabu ]]; then
-    if [[ ${BK_REUSE_NATIVE_KERNEL:-0} != 1 ]]; then
-      "$project_dir/scripts/build-linux-native"
-    fi
-    linux_prebuilt=/workspace/bk-Arch_nabu/build/linux-native/src/linux-nabu
-  fi
-  build_one "$package_dir"
+  printf 'Building %s with host cross toolchain\n' "$package_dir"
+  "$project_dir/scripts/build-package-host" "$package_dir"
 done
 
-install -m644 "$project_dir/cache/sources/nabu-repo/"*.pkg.tar.xz "$package_output/"
+for package_file in "$project_dir/cache/sources/nabu-repo/"*.pkg.tar.xz; do
+  [[ -e $package_file ]] || continue
+  case ${package_file##*/} in
+    linux-firmware-xiaomi-nabu-*|nabu-pmac-*) ;;
+    *) continue ;;
+  esac
+  install -m644 "$package_file" "$package_output/"
+done
 
-bwrap \
-  --unshare-user --uid 1000 --gid 1000 \
-  --unshare-pid --unshare-uts --unshare-ipc --share-net \
-  --die-with-parent \
-  --bind "$builder_root" / \
-  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
-  --bind "$workspace_parent" /workspace \
-  --chdir /workspace/bk-Arch_nabu/output/packages \
-  /usr/bin/bash -lc \
-    'shopt -s nullglob; packages=(./*.pkg.tar.zst ./*.pkg.tar.xz); repo-add -R bk.db.tar.zst "${packages[@]}"'
+(
+  cd "$package_output"
+  shopt -s nullglob
+  packages=(./*.pkg.tar.zst ./*.pkg.tar.xz)
+  for repository_file in bk.db bk.db.tar.zst bk.files bk.files.tar.zst; do
+    [[ ! -e $repository_file && ! -L $repository_file ]] || \
+      unlink -- "$repository_file"
+  done
+  repo-add bk.db.tar.zst "${packages[@]}"
+)
 (
   cd "$package_output"
   find . -maxdepth 1 -type f \( -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz' \) \

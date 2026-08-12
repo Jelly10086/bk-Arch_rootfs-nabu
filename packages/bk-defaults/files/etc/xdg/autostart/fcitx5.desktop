@@ -2,6 +2,6 @@
 Type=Application
 Name=Fcitx 5
 Exec=fcitx5 -d --replace
-OnlyShowIn=niri;
+OnlyShowIn=Hyprland;
 X-GNOME-Autostart-enabled=true
 NoDisplay=true

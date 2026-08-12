@@ -24,6 +24,10 @@ fetch_git nabu-arch-images https://github.com/Kumar-Jy/Nabu-arch-images.git \
   be0d285945d2b4c9e768df1a0aaa0b0887dc95b6
 fetch_git refind-tokyo-night https://github.com/almighty-loaf/rEFInd-tokyo-night.git \
   19d243e19c79e82bedf413f3e28eba7c3469cc69
+fetch_git tqftpserv https://github.com/andersson/tqftpserv.git \
+  b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
+fetch_git dots-hyprland https://github.com/end-4/dots-hyprland.git \
+  69f1a543196d47286a4630c2c0868a1827e512f2
 
 noto="$project_dir/cache/sources/fonts/18_NotoSansSC.zip"
 if [[ ! -f $noto ]]; then

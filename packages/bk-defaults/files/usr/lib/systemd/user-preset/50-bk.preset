@@ -1,5 +1,5 @@
 enable pipewire.service
 enable pipewire-pulse.service
 enable wireplumber.service
-enable bk-shell.service
-disable bk-shell-stock.service
+enable ydotool.service
+enable noctalia-pad-osk.service

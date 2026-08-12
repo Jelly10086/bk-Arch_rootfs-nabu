@@ -41,7 +41,12 @@ bwrap \
     fi
     pacman -Syu --needed --noconfirm --disable-sandbox \
       base-devel bc ccache cmake cpio dtc gettext git go inetutils kmod libelf \
-      ninja pahole patch python
+      meson ninja pahole patch python qrtr \
+      cairo curl fontconfig freetype2 glib2 harfbuzz jemalloc libglvnd libical \
+      libinput libjxl libpipewire libqalculate librsvg libsecret libsndfile \
+      libsodium libwebp libwireplumber libxkbcommon libxml2 md4c nlohmann-json \
+      pam pango polkit sdbus-cpp scdoc stb tomlplusplus wayland \
+      wayland-protocols wlroots0.20
     sed -i "s/!ccache/ccache/" /etc/makepkg.conf
   ' >&2
 

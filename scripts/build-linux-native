@@ -37,6 +37,7 @@ install -m644 \
   "$package_dir/bk-sandbox.config" \
   "$package_dir/bk-nabu-prune.config" \
   "$package_dir/idtp9418-gpio-consumer.patch" \
+  "$package_dir/nt36523-firmware-retry.patch" \
   "$srcdir/"
 
 # shellcheck source=/dev/null
