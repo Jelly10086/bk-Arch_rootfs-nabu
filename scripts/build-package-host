@@ -2,11 +2,10 @@
 set -euo pipefail
 
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
-workspace_parent=$(dirname "$project_dir")
 package_dir=${1:?package directory is required}
 package_path="$project_dir/packages/$package_dir"
 package_output="$project_dir/output/packages"
-noctalia_source="$workspace_parent/noctalia"
+noctalia_source="$project_dir/cache/sources/git/noctalia-pad"
 kernel_release=6.18.42-sm8150
 
 [[ -f $package_path/PKGBUILD ]] || {
@@ -41,7 +40,7 @@ export BK_CROSS_FILE="$cross_file"
 export BK_CROSS_SYSROOT="$sysroot"
 export BK_CROSS_PKG_CONFIG="$project_dir/scripts/aarch64-pkg-config"
 export BK_NOCTALIA_SOURCE="$noctalia_source"
-export BK_NOCTALIA_PAD_COMMIT="$(git -C "$noctalia_source" rev-parse HEAD)"
+export BK_NOCTALIA_PAD_COMMIT=ceba6c02ba09b832315bc0ffe9f8c7b82423a983
 export BK_NOCTALIA_COMMIT="$BK_NOCTALIA_PAD_COMMIT"
 export BK_NOCTALIA_GREETER_COMMIT=d0180243312ebcb241c64391e7c42ac71a2fcac4
 export BK_END4_SOURCE="$project_dir/cache/sources/git/dots-hyprland"

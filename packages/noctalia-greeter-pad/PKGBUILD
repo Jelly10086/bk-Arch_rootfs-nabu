@@ -15,7 +15,7 @@ depends=(
 makedepends=('meson' 'ninja' 'nlohmann-json' 'pkgconf' 'stb' 'wayland-protocols')
 
 _commit=${BK_NOCTALIA_PAD_COMMIT:?BK_NOCTALIA_PAD_COMMIT is required}
-_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../cache/sources/git/noctalia-pad"}
 
 prepare() {
   [[ -d $_source/.git ]] || { printf 'Noctalia checkout not found: %s\n' "$_source" >&2; return 1; }
@@ -70,7 +70,7 @@ default = "unkn0wn"
 font_family = "Rubik"
 scheme = "Tokyo-Night"
 EOF
-  _pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+  _pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../cache/sources/git/noctalia-pad"}
   install -Dm755 "$_pad_source/nabu/greeter/noctalia-greeter-end4-session" \
     "$pkgdir/usr/bin/noctalia-greeter-end4-session"
   install -Dm644 "$_pad_source/nabu/greeter/hyprland-end4.conf" \

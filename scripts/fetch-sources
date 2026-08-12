@@ -6,6 +6,20 @@ git_cache="$project_dir/cache/sources/git"
 mkdir -p "$git_cache" "$project_dir/cache/sources/fonts" \
   "$project_dir/cache/sources/firmware" "$project_dir/cache/sources/nabu-repo"
 
+fetch_file() {
+  local url=$1 destination=$2 hash=$3
+  mkdir -p "$(dirname "$destination")"
+  if [[ -f $destination ]] && ! printf '%s  %s\n' "$hash" "$destination" | sha256sum -c - >/dev/null 2>&1; then
+    rm -f -- "$destination"
+  fi
+  if [[ ! -f $destination ]]; then
+    curl -fL --retry 5 --retry-all-errors --retry-delay 3 \
+      -o "$destination.part" "$url"
+    mv "$destination.part" "$destination"
+  fi
+  printf '%s  %s\n' "$hash" "$destination" | sha256sum -c -
+}
+
 fetch_git() {
   local name=$1 url=$2 commit=$3 destination="$git_cache/$1"
   if [[ ! -d $destination/.git ]]; then
@@ -28,16 +42,18 @@ fetch_git tqftpserv https://github.com/andersson/tqftpserv.git \
   b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
 fetch_git dots-hyprland https://github.com/end-4/dots-hyprland.git \
   69f1a543196d47286a4630c2c0868a1827e512f2
+fetch_git noctalia-pad https://github.com/Jelly10086/noctalia-pad.git \
+  ceba6c02ba09b832315bc0ffe9f8c7b82423a983
 
-noto="$project_dir/cache/sources/fonts/18_NotoSansSC.zip"
-if [[ ! -f $noto ]]; then
-  curl -fL --retry 3 -o "$noto.part" \
-    https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip
-  mv "$noto.part" "$noto"
-fi
-printf '%s  %s\n' \
-  4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec \
-  "$noto" | sha256sum -c -
+fetch_file \
+  https://ca.us.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz \
+  "$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz" \
+  42a4eeaa038994ffd31fa173256ef2f0ef511358eeb41b9ea1f8626391b9b319
+
+fetch_file \
+  https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip \
+  "$project_dir/cache/sources/fonts/18_NotoSansSC.zip" \
+  4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec
 
 fetch_archive() {
   local filename=$1 hash=$2
@@ -56,27 +72,12 @@ fetch_archive nabu-pmac-1-2-any.pkg.tar.xz \
   9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6
 
 firmware_cache="$project_dir/cache/sources/firmware"
-if [[ ! -f $firmware_cache/SM8150_EFI_NOSB.fd || ! -f $firmware_cache/xiaomi-nabu_NOSB.img ]]; then
-  local_artifact="$project_dir/staging/uefi-project-aloha-run30522497322/SurfaceDuo1Pkg/ci_artifacts/xiaomi-nabu"
-  if [[ -d $local_artifact ]]; then
-    install -m644 "$local_artifact/SM8150_EFI_NOSB.fd" "$firmware_cache/"
-    install -m644 "$local_artifact/xiaomi-nabu_NOSB.img" "$firmware_cache/"
-  elif command -v gh >/dev/null; then
-    artifact_dir=$(mktemp -d)
-    gh run download 30522497322 -R Project-Aloha/mu_aloha_platforms \
-      -n SurfaceDuo1Pkg -D "$artifact_dir"
-    install -m644 "$artifact_dir/ci_artifacts/xiaomi-nabu/SM8150_EFI_NOSB.fd" \
-      "$firmware_cache/"
-    install -m644 "$artifact_dir/ci_artifacts/xiaomi-nabu/xiaomi-nabu_NOSB.img" \
-      "$firmware_cache/"
-  else
-    echo 'NOSB firmware artifact is unavailable; build xiaomi-nabu from the pinned Project Aloha commit' >&2
-    exit 1
-  fi
-fi
-
-printf '%s  %s\n' \
-  7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab \
+bootstrap_url=https://github.com/Jelly10086/bk-Arch_rootfs-nabu/releases/download/ci-bootstrap-v1
+fetch_file \
+  "$bootstrap_url/SM8150_EFI_NOSB.fd" \
   "$firmware_cache/SM8150_EFI_NOSB.fd" \
-  630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f \
-  "$firmware_cache/xiaomi-nabu_NOSB.img" | sha256sum -c -
+  7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab
+fetch_file \
+  "$bootstrap_url/xiaomi-nabu_NOSB.img" \
+  "$firmware_cache/xiaomi-nabu_NOSB.img" \
+  630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f

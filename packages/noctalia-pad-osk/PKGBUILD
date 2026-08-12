@@ -5,6 +5,7 @@ pkgdesc='Original end-4 on-screen keyboard integration for Noctalia Pad'
 arch=('any')
 url='https://github.com/end-4/dots-hyprland'
 license=('GPL-3.0-only')
+makedepends=('patch')
 depends=(
   'bash' 'hyprland' 'quickshell' 'ydotool'
   'qt6-base' 'qt6-declarative' 'qt6-5compat' 'qt6-imageformats'
@@ -33,7 +34,7 @@ prepare() {
 }
 
 package() {
-  local pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+  local pad_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../cache/sources/git/noctalia-pad"}
   local install_root="$pkgdir/usr/share/noctalia-pad/end4-osk/ii"
 
   install -d "$install_root"

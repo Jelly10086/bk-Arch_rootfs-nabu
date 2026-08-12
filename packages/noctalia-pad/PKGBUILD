@@ -18,7 +18,7 @@ optdepends=('power-profiles-daemon: power profile management' 'upower: battery i
 makedepends=('meson' 'ninja' 'nlohmann-json' 'pkgconf' 'stb' 'wayland-protocols')
 
 _commit=${BK_NOCTALIA_PAD_COMMIT:?BK_NOCTALIA_PAD_COMMIT is required}
-_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../noctalia"}
+_source=${BK_NOCTALIA_SOURCE:-"$startdir/../../cache/sources/git/noctalia-pad"}
 
 prepare() {
   [[ -d $_source/.git ]] || { printf 'Noctalia checkout not found: %s\n' "$_source" >&2; return 1; }

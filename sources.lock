@@ -62,6 +62,7 @@ commit = "4af0a7c600b4e5c22eec55505b6f216ac73506ed"
 
 [[archive]]
 name = "archlinuxarm-rootfs"
+url = "https://ca.us.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
 path = "cache/ArchLinuxARM-aarch64-latest.tar.gz"
 sha256 = "42a4eeaa038994ffd31fa173256ef2f0ef511358eeb41b9ea1f8626391b9b319"
 
@@ -94,10 +95,14 @@ url = "https://github.com/Kumar-Jy/nabu-pkgs/releases/download/repo/nabu-pmac-1-
 path = "cache/sources/nabu-repo/nabu-pmac-1-2-any.pkg.tar.xz"
 sha256 = "9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6"
 
-[[artifact]]
+[[archive]]
 name = "xiaomi-nabu-nosb-boot"
+url = "https://github.com/Jelly10086/bk-Arch_rootfs-nabu/releases/download/ci-bootstrap-v1/xiaomi-nabu_NOSB.img"
+path = "cache/sources/firmware/xiaomi-nabu_NOSB.img"
 sha256 = "630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f"
 
-[[artifact]]
+[[archive]]
 name = "sm8150-nosb-fd"
+url = "https://github.com/Jelly10086/bk-Arch_rootfs-nabu/releases/download/ci-bootstrap-v1/SM8150_EFI_NOSB.fd"
+path = "cache/sources/firmware/SM8150_EFI_NOSB.fd"
 sha256 = "7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab"
