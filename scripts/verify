@@ -82,7 +82,6 @@ grep -Fq 'qs -p "$end4_root/end4-osk-session.qml"' \
   "$rootfs/usr/bin/noctalia-pad-osk"
 grep -Fq 'ipc call osk toggle' "$rootfs/usr/bin/noctalia-pad-osk"
 for end4_file in \
-  modules/ii/onScreenKeyboard/OnScreenKeyboard.qml \
   modules/ii/onScreenKeyboard/OskContent.qml \
   modules/ii/onScreenKeyboard/OskKey.qml \
   modules/ii/onScreenKeyboard/layouts.js \
@@ -91,6 +90,11 @@ for end4_file in \
     "$rootfs/usr/share/noctalia-pad/end4-osk/ii/$end4_file" \
     "$project_dir/cache/sources/git/dots-hyprland/dots/.config/quickshell/ii/$end4_file"
 done
+grep -Fq 'component ResizeHandle: Item' \
+  "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/OnScreenKeyboard.qml"
+grep -Fq 'Layout.minimumHeight: 44' \
+  "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/OnScreenKeyboard.qml"
+grep -Fq 'external-osk-set' "$rootfs/usr/bin/noctalia-pad-osk"
 ! find "$rootfs/usr/bin" -maxdepth 1 -iname 'wvkbd*' -print -quit | grep -q .
 ! find "$rootfs/etc" "$rootfs/usr/lib/systemd" "$rootfs/usr/share" -xdev \
   \( -iname dms -o -iname 'dms-*' -o -iname '*-dms' \

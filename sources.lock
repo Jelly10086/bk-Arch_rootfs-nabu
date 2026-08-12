@@ -34,7 +34,7 @@ commit = "19d243e19c79e82bedf413f3e28eba7c3469cc69"
 name = "noctalia-pad"
 url = "https://github.com/Jelly10086/noctalia-pad.git"
 ref = "main"
-commit = "8763c105238e41ef19ee85a8fdbdee70441cb556"
+commit = "071861f3b46d0629cb2a459719f2ae9d4e5cec88"
 
 [[git]]
 name = "noctalia-greeter"

@@ -1,6 +1,6 @@
 pkgname=noctalia-pad-osk
 pkgver=20260812
-pkgrel=2
+pkgrel=3
 pkgdesc='Original end-4 on-screen keyboard integration for Noctalia Pad'
 arch=('any')
 url='https://github.com/end-4/dots-hyprland'
@@ -38,6 +38,10 @@ package() {
 
   install -d "$install_root"
   cp -a --no-preserve=ownership "$_source/dots/.config/quickshell/ii/." "$install_root/"
+  # Keep end-4's keyboard content, key widgets, layouts and ydotool backend.
+  # Only the original window shell is adapted for tablet drag/resize behavior.
+  install -Dm644 "$pad_source/nabu/osk/OnScreenKeyboard.qml" \
+    "$install_root/modules/ii/onScreenKeyboard/OnScreenKeyboard.qml"
   install -Dm644 "$pad_source/nabu/osk/end4-osk-session.qml" \
     "$install_root/end4-osk-session.qml"
   install -Dm644 "$pad_source/nabu/osk/end4-osk-greeter.qml" \
