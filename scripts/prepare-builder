@@ -7,6 +7,21 @@ rootfs_archive="$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz"
 host_resolv=$(readlink -f /etc/resolv.conf)
 package_file="$project_dir/ci/archlinuxarm-builder-packages.txt"
 builder_stamp="$builder_root/.bk-builder-packages"
+host_uid=$(id -u)
+host_gid=$(id -g)
+
+bwrap_command=(bwrap)
+bwrap_user_args=(--unshare-user --uid 0 --gid 0)
+privileged_builder=0
+if [[ ${BK_PRIVILEGED_BUILDER:-0} == 1 ]]; then
+  command -v sudo >/dev/null || {
+    echo 'BK_PRIVILEGED_BUILDER=1 requires sudo' >&2
+    exit 1
+  }
+  bwrap_command=(sudo bwrap)
+  bwrap_user_args=(--gid 0 --uid 0)
+  privileged_builder=1
+fi
 
 mapfile -t builder_packages < <(
   sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$package_file"
@@ -22,11 +37,17 @@ if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
     "$project_dir"/build/builder-root) ;;
     *) echo "unsafe builder path: $builder_root" >&2; exit 1 ;;
   esac
-  rm -rf -- "$builder_root"
-  mkdir -p "$builder_root"
-  # A rootless user namespace cannot restore security.capability xattrs.
-  bsdtar -xf "$rootfs_archive" -C "$builder_root" \
-    --no-xattrs --no-acls --no-fflags
+  if [[ $privileged_builder == 1 ]]; then
+    sudo rm -rf -- "$builder_root"
+    sudo install -d -m755 "$builder_root"
+    sudo bsdtar -xpf "$rootfs_archive" -C "$builder_root"
+  else
+    rm -rf -- "$builder_root"
+    mkdir -p "$builder_root"
+    # A rootless user namespace cannot restore security.capability xattrs.
+    bsdtar -xf "$rootfs_archive" -C "$builder_root" \
+      --no-xattrs --no-acls --no-fflags
+  fi
 fi
 
 if [[ -f $builder_stamp && $(<"$builder_stamp") == "$builder_key" ]]; then
@@ -34,18 +55,14 @@ if [[ -f $builder_stamp && $(<"$builder_stamp") == "$builder_key" ]]; then
   exit 0
 fi
 
-mkdir -p "$builder_root/workspace" "$builder_root/mnt" \
-  "$builder_root/run/systemd/resolve"
-
-bwrap_command=(bwrap)
-bwrap_user_args=(--unshare-user --uid 0 --gid 0)
-if [[ ${BK_PRIVILEGED_BUILDER:-0} == 1 ]]; then
-  command -v sudo >/dev/null || {
-    echo 'BK_PRIVILEGED_BUILDER=1 requires sudo' >&2
-    exit 1
-  }
-  bwrap_command=(sudo bwrap)
-  bwrap_user_args=(--gid 0 --uid 0)
+if [[ $privileged_builder == 1 ]]; then
+  sudo install -d -m755 "$builder_root/mnt" \
+    "$builder_root/run/systemd/resolve"
+  sudo install -d -m755 -o "$host_uid" -g "$host_gid" \
+    "$builder_root/workspace"
+else
+  mkdir -p "$builder_root/workspace" "$builder_root/mnt" \
+    "$builder_root/run/systemd/resolve"
 fi
 
 "${bwrap_command[@]}" \
@@ -66,6 +83,11 @@ fi
     sed -i "s/!ccache/ccache/" /etc/makepkg.conf
   ' bash "${builder_packages[@]}" >&2
 
-printf '%s\n' "$builder_key" >"$builder_stamp"
+if [[ $privileged_builder == 1 ]]; then
+  printf '%s\n' "$builder_key" | sudo tee "$builder_stamp" >/dev/null
+  sudo chmod 644 "$builder_stamp"
+else
+  printf '%s\n' "$builder_key" >"$builder_stamp"
+fi
 
 printf '%s\n' "$builder_root"
