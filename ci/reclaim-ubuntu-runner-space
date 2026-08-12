@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ ${GITHUB_ACTIONS:-false} == true ]] || {
+  echo 'runner cleanup is restricted to GitHub Actions' >&2
+  exit 1
+}
+
+for directory in /usr/local/lib/android /usr/share/dotnet; do
+  [[ -d $directory ]] || continue
+  sudo find "$directory" -mindepth 1 -delete
+done
+sudo docker system prune --all --force --volumes >/dev/null 2>&1 || true
+df -h /

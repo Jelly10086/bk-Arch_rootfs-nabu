@@ -49,6 +49,8 @@ done < <(sed -n 's/^# CONFIG_\([A-Z0-9_]*\) is not set$/\1/p' \
 ukify inspect "$uki" | grep -A5 '^\.uname:' | grep -qx "    $expected_release"
 ukify inspect "$uki" | grep -q '^\.dtb:'
 ukify inspect "$uki" | grep -q '^\.initrd:'
+ukify inspect "$uki" | grep -A8 '^\.cmdline:' \
+  | grep -q 'root=PARTLABEL=linux rw'
 
 grep -q 'exec-once = noctalia' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q '^exec-once = noctalia-pad-osk start$' \
@@ -168,10 +170,12 @@ e2fsck -fn "$project_dir/output/bk-nabu-rootfs.img"
 ! tune2fs -l "$project_dir/output/bk-nabu-rootfs.img" \
   | awk -F: '$1 == "Filesystem features" { print $2 }' \
   | grep -qw orphan_file
-fsck.fat -vn "$project_dir/output/esp.img" \
-  | grep -q '^      4096 bytes per logical sector$'
-mtype -i "$project_dir/output/esp.img" ::/EFI/BOOT/refind.conf \
-  | grep -q '^include themes/rEFInd-tokyo-night/theme.conf$'
+if [[ ${BK_VERIFY_ROOTFS_ONLY:-0} != 1 ]]; then
+  fsck.fat -vn "$project_dir/output/esp.img" \
+    | grep -q '^      4096 bytes per logical sector$'
+  mtype -i "$project_dir/output/esp.img" ::/EFI/BOOT/refind.conf \
+    | grep -q '^include themes/rEFInd-tokyo-night/theme.conf$'
+fi
 (
   cd "$project_dir/output"
   sha256sum -c SHA256SUMS

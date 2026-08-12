@@ -16,6 +16,12 @@ scripts/build --profile dev --clean
 scripts/build --profile release --clean
 ```
 
+GitHub Actions uses the native `ubuntu-24.04-arm` runner. Ubuntu dependencies
+are listed in `ci/ubuntu-24.04-arm-packages.txt`; the native Arch Linux ARM
+compiler and development packages are listed separately in
+`ci/archlinuxarm-builder-packages.txt`. The workflow installs both lists and
+does not use QEMU for compilation or target userspace execution.
+
 Generated files are written to `output/`. Device partitioning and flashing are
 not part of the image build.
 

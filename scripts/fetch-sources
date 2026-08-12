@@ -3,6 +3,26 @@ set -euo pipefail
 
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
 git_cache="$project_dir/cache/sources/git"
+group=all
+
+while (($#)); do
+  case $1 in
+    --group)
+      group=${2:?--group requires all, kernel, userspace, rootfs, image or verify}
+      shift 2
+      ;;
+    *)
+      printf 'unknown option: %s\n' "$1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case $group in
+  all|kernel|userspace|rootfs|image|verify) ;;
+  *) printf 'unknown source group: %s\n' "$group" >&2; exit 2 ;;
+esac
+
 mkdir -p "$git_cache" "$project_dir/cache/sources/fonts" \
   "$project_dir/cache/sources/firmware" "$project_dir/cache/sources/nabu-repo"
 
@@ -32,29 +52,6 @@ fetch_git() {
   [[ $(git -C "$destination" rev-parse HEAD) == "$commit" ]]
 }
 
-fetch_git linux-nabu https://github.com/TwinbornPlate75/linux-nabu.git \
-  bf584639297f67a855ac14a381c18576b7c77843
-fetch_git nabu-arch-images https://github.com/Kumar-Jy/Nabu-arch-images.git \
-  be0d285945d2b4c9e768df1a0aaa0b0887dc95b6
-fetch_git refind-tokyo-night https://github.com/almighty-loaf/rEFInd-tokyo-night.git \
-  19d243e19c79e82bedf413f3e28eba7c3469cc69
-fetch_git tqftpserv https://github.com/andersson/tqftpserv.git \
-  b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
-fetch_git dots-hyprland https://github.com/end-4/dots-hyprland.git \
-  69f1a543196d47286a4630c2c0868a1827e512f2
-fetch_git noctalia-pad https://github.com/Jelly10086/noctalia-pad.git \
-  ceba6c02ba09b832315bc0ffe9f8c7b82423a983
-
-fetch_file \
-  https://ca.us.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz \
-  "$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz" \
-  42a4eeaa038994ffd31fa173256ef2f0ef511358eeb41b9ea1f8626391b9b319
-
-fetch_file \
-  https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip \
-  "$project_dir/cache/sources/fonts/18_NotoSansSC.zip" \
-  4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec
-
 fetch_archive() {
   local filename=$1 hash=$2
   local destination="$project_dir/cache/sources/nabu-repo/$filename"
@@ -66,18 +63,52 @@ fetch_archive() {
   printf '%s  %s\n' "$hash" "$destination" | sha256sum -c -
 }
 
-fetch_archive linux-firmware-xiaomi-nabu-25.04.26-1-any.pkg.tar.xz \
-  bef43c32029902bc4c3c1b7c7007c6e5d954fe673933087a836b5a41b567bac9
-fetch_archive nabu-pmac-1-2-any.pkg.tar.xz \
-  9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6
+if [[ $group == all || $group == kernel ]]; then
+  fetch_git linux-nabu https://github.com/TwinbornPlate75/linux-nabu.git \
+    bf584639297f67a855ac14a381c18576b7c77843
+fi
 
-firmware_cache="$project_dir/cache/sources/firmware"
-bootstrap_url=https://github.com/Jelly10086/bk-Arch_rootfs-nabu/releases/download/ci-bootstrap-v1
-fetch_file \
-  "$bootstrap_url/SM8150_EFI_NOSB.fd" \
-  "$firmware_cache/SM8150_EFI_NOSB.fd" \
-  7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab
-fetch_file \
-  "$bootstrap_url/xiaomi-nabu_NOSB.img" \
-  "$firmware_cache/xiaomi-nabu_NOSB.img" \
-  630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f
+if [[ $group == all || $group == userspace ]]; then
+  fetch_git tqftpserv https://github.com/andersson/tqftpserv.git \
+    b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
+  fetch_git noctalia-pad https://github.com/Jelly10086/noctalia-pad.git \
+    ceba6c02ba09b832315bc0ffe9f8c7b82423a983
+  fetch_file \
+    https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/18_NotoSansSC.zip \
+    "$project_dir/cache/sources/fonts/18_NotoSansSC.zip" \
+    4d107c09ada479d3e48b6e78c83835773cbd9214bf6e12cdb7b60f8e068292ec
+  fetch_archive linux-firmware-xiaomi-nabu-25.04.26-1-any.pkg.tar.xz \
+    bef43c32029902bc4c3c1b7c7007c6e5d954fe673933087a836b5a41b567bac9
+  fetch_archive nabu-pmac-1-2-any.pkg.tar.xz \
+    9d049a6452e89ddef350100919293ada920d0bab10ed8af737a87899b1dc04a6
+fi
+
+if [[ $group == all || $group == userspace || $group == image || $group == verify ]]; then
+  fetch_git dots-hyprland https://github.com/end-4/dots-hyprland.git \
+    69f1a543196d47286a4630c2c0868a1827e512f2
+fi
+
+if [[ $group == all || $group == image ]]; then
+  fetch_git nabu-arch-images https://github.com/Kumar-Jy/Nabu-arch-images.git \
+    be0d285945d2b4c9e768df1a0aaa0b0887dc95b6
+  fetch_git refind-tokyo-night https://github.com/almighty-loaf/rEFInd-tokyo-night.git \
+    19d243e19c79e82bedf413f3e28eba7c3469cc69
+
+  firmware_cache="$project_dir/cache/sources/firmware"
+  bootstrap_url=https://github.com/Jelly10086/bk-Arch_rootfs-nabu/releases/download/ci-bootstrap-v1
+  fetch_file \
+    "$bootstrap_url/SM8150_EFI_NOSB.fd" \
+    "$firmware_cache/SM8150_EFI_NOSB.fd" \
+    7215504b1e101d43ae4e8710b45ed01db7975ddafa3abd9bdf3776d24c70f6ab
+  fetch_file \
+    "$bootstrap_url/xiaomi-nabu_NOSB.img" \
+    "$firmware_cache/xiaomi-nabu_NOSB.img" \
+    630b8f11d92e6766db11d1b5731b517cced2bdd3b097f6e2ecccd43b1606423f
+fi
+
+if [[ $group == all || $group == kernel || $group == userspace || $group == rootfs || $group == image ]]; then
+  fetch_file \
+    https://ca.us.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz \
+    "$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz" \
+    42a4eeaa038994ffd31fa173256ef2f0ef511358eeb41b9ea1f8626391b9b319
+fi

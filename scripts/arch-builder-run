@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+builder_root=${BK_BUILDER_ROOT:-"$project_dir/build/builder-root"}
+host_resolv=$(readlink -f /etc/resolv.conf)
+run_as_user=0
+
+if [[ ${1:-} == --user ]]; then
+  run_as_user=1
+  shift
+fi
+
+[[ $(uname -m) == aarch64 ]] || {
+  printf 'native Arch builder requires AArch64, got %s\n' "$(uname -m)" >&2
+  exit 1
+}
+[[ -x $builder_root/usr/bin/pacman ]] || "$project_dir/scripts/prepare-builder" >/dev/null
+
+mkdir -p "$project_dir/cache" "$project_dir/output"
+
+user_args=(--unshare-user --uid 0 --gid 0)
+container_home=/root
+if [[ $run_as_user == 1 ]]; then
+  user_args=(--unshare-user)
+  container_home=/workspace/home
+  mkdir -p "$builder_root/workspace/home"
+fi
+
+exec bwrap \
+  "${user_args[@]}" \
+  --unshare-pid --unshare-uts --unshare-ipc --share-net \
+  --die-with-parent \
+  --bind "$builder_root" / \
+  --proc /proc --dev /dev --ro-bind /sys /sys --tmpfs /tmp \
+  --ro-bind "$host_resolv" /run/systemd/resolve/resolv.conf \
+  --ro-bind "$project_dir" /source \
+  --bind "$project_dir/cache" /source/cache \
+  --bind "$project_dir/output" /output \
+  --setenv HOME "$container_home" \
+  "$@"

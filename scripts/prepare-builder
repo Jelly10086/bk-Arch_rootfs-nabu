@@ -5,6 +5,13 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd)
 builder_root=${BK_BUILDER_ROOT:-"$project_dir/build/builder-root"}
 rootfs_archive="$project_dir/cache/ArchLinuxARM-aarch64-latest.tar.gz"
 host_resolv=$(readlink -f /etc/resolv.conf)
+package_file="$project_dir/ci/archlinuxarm-builder-packages.txt"
+builder_stamp="$builder_root/.bk-builder-packages"
+
+mapfile -t builder_packages < <(
+  sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$package_file"
+)
+builder_key=$(sha256sum "$package_file" | awk '{print $1}')
 
 if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
   [[ -f $rootfs_archive ]] || {
@@ -20,6 +27,11 @@ if [[ ! -x "$builder_root/usr/bin/pacman" ]]; then
   # A rootless user namespace cannot restore security.capability xattrs.
   bsdtar -xf "$rootfs_archive" -C "$builder_root" \
     --no-xattrs --no-acls --no-fflags
+fi
+
+if [[ -f $builder_stamp && $(<"$builder_stamp") == "$builder_key" ]]; then
+  printf '%s\n' "$builder_root"
+  exit 0
 fi
 
 mkdir -p "$builder_root/workspace" "$builder_root/mnt" \
@@ -39,15 +51,10 @@ bwrap \
       pacman-key --init
       pacman-key --populate archlinuxarm
     fi
-    pacman -Syu --needed --noconfirm --disable-sandbox \
-      base-devel bc ccache cmake cpio dtc gettext git go inetutils kmod libelf \
-      meson ninja pahole patch python qrtr \
-      cairo curl fontconfig freetype2 glib2 harfbuzz jemalloc libglvnd libical \
-      libinput libjxl libpipewire libqalculate librsvg libsecret libsndfile \
-      libsodium libwebp libwireplumber libxkbcommon libxml2 md4c nlohmann-json \
-      pam pango polkit sdbus-cpp scdoc stb tomlplusplus wayland \
-      wayland-protocols wlroots0.20
+    pacman -Syu --needed --noconfirm --disable-sandbox -- "$@"
     sed -i "s/!ccache/ccache/" /etc/makepkg.conf
-  ' >&2
+  ' bash "${builder_packages[@]}" >&2
+
+printf '%s\n' "$builder_key" >"$builder_stamp"
 
 printf '%s\n' "$builder_root"

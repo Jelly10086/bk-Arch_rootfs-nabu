@@ -52,6 +52,7 @@ if [[ $clean == 1 ]]; then
   for target in \
     "$project_dir/build/makepkg" \
     "$project_dir/build/makepkg-host" \
+    "$project_dir/build/builder-root/workspace/makepkg" \
     "$project_dir/build/mkosi-workspace" \
     "$project_dir/output/bk-nabu-rootfs" \
     "$project_dir/output/bk-nabu-rootfs.img" \

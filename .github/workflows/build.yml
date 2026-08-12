@@ -1,0 +1,302 @@
+name: Build XiaomiPad5 RootFS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: nabu-rootfs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      build_time: ${{ steps.build-time.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: build-time
+        name: Set shared UTC build time
+        run: echo "value=$(date -u +'%H%M%S')" >>"$GITHUB_OUTPUT"
+
+      - name: Check public build inputs
+        run: |
+          test "$(uname -m)" = aarch64
+          test -f sources.lock
+          test -f packages/linux-nabu/PKGBUILD
+          test -f image/mkosi.conf
+          ./scripts/audit-public
+          find ci scripts -type f -perm /111 -print0 \
+            | xargs -0 -r -n1 bash -n
+
+  build-kernel:
+    needs: prepare
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore kernel package cache
+        id: kernel-cache
+        uses: actions/cache@v4
+        with:
+          path: ci-cache/kernel
+          key: >-
+            linux-nabu-arm64-${{ hashFiles(
+            'sources.lock',
+            'packages/linux-nabu/PKGBUILD',
+            'packages/linux-nabu/*.config',
+            'packages/linux-nabu/*.patch',
+            'packages/linux-nabu/*.install',
+            'ci/archlinuxarm-builder-packages.txt',
+            'scripts/build-package-native',
+            'scripts/prepare-builder') }}
+
+      - name: Reclaim runner disk space
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: ./ci/reclaim-ubuntu-runner-space
+
+      - name: Install native ARM64 build dependencies
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: ./ci/install-ubuntu-24.04-arm-deps
+
+      - name: Fetch locked kernel sources
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: ./scripts/fetch-sources --group kernel
+
+      - name: Build linux-nabu packages
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        env:
+          BK_NATIVE_JOBS: "4"
+        run: |
+          ./scripts/build-packages linux-nabu
+          mkdir -p ci-cache/kernel
+          cp output/packages/linux-nabu-*.pkg.tar.* ci-cache/kernel/
+
+      - name: Check cached kernel package set
+        run: |
+          compgen -G 'ci-cache/kernel/linux-nabu-[0-9]*.pkg.tar.*' >/dev/null
+          compgen -G 'ci-cache/kernel/linux-nabu-headers-*.pkg.tar.*' >/dev/null
+
+      - name: Pass kernel packages to RootFS job
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-nabu-packages
+          path: ci-cache/kernel/
+          retention-days: 1
+          if-no-files-found: error
+
+  build-bk-pkg:
+    needs: prepare
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reclaim runner disk space
+        run: ./ci/reclaim-ubuntu-runner-space
+
+      - name: Install native ARM64 build dependencies
+        run: ./ci/install-ubuntu-24.04-arm-deps
+
+      - name: Fetch locked userspace sources
+        run: ./scripts/fetch-sources --group userspace
+
+      - name: Build BK userspace packages
+        env:
+          BK_NATIVE_JOBS: "4"
+        run: |
+          ./scripts/build-packages \
+            bk-packagelist bk-log bk-defaults \
+            noctalia-pad noctalia-greeter-pad noctalia-pad-osk \
+            tqftpserv yay
+
+      - name: Pass userspace packages to RootFS job
+        uses: actions/upload-artifact@v4
+        with:
+          name: bk-userspace-packages
+          path: output/packages/*.pkg.tar.*
+          retention-days: 1
+          if-no-files-found: error
+
+  build-rootfs:
+    needs:
+      - prepare
+      - build-kernel
+      - build-bk-pkg
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reclaim runner disk space
+        run: ./ci/reclaim-ubuntu-runner-space
+
+      - name: Install ARM64 image dependencies
+        run: ./ci/install-ubuntu-24.04-arm-deps
+
+      - name: Fetch locked image sources
+        run: ./scripts/fetch-sources --group rootfs
+
+      - name: Download linux-nabu packages
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-nabu-packages
+          path: output/packages
+
+      - name: Download BK userspace packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bk-userspace-packages
+          path: output/packages
+
+      - name: Assemble local BK repository
+        run: |
+          cd output/packages
+          repo-add bk.db.tar.zst ./*.pkg.tar.zst ./*.pkg.tar.xz
+
+      - name: Build release RootFS and UKI
+        run: |
+          sudo env BK_PUBLIC_BUILD=1 ./scripts/build-rootfs release
+          sudo ./scripts/build-artifacts --rootfs-only
+
+      - name: Compress RootFS for job transfer
+        run: |
+          mkdir -p staging-ci
+          zstd -T0 -10 --sparse -f \
+            output/bk-nabu-rootfs.img \
+            -o staging-ci/rootfs.img.zst
+          sudo find output/bk-nabu-rootfs -depth -delete
+          find output/bk-nabu-rootfs.img -delete
+
+      - name: Pass image to verification job
+        uses: actions/upload-artifact@v4
+        with:
+          name: nabu-image-unverified
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            staging-ci/rootfs.img.zst
+            output/arch-linux-nabu.efi
+
+  verify:
+    needs:
+      - prepare
+      - build-rootfs
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reclaim runner disk space
+        run: ./ci/reclaim-ubuntu-runner-space
+
+      - name: Install ARM64 verification dependencies
+        run: ./ci/install-ubuntu-24.04-arm-deps
+
+      - name: Fetch locked verification sources
+        run: ./scripts/fetch-sources --group verify
+
+      - name: Download unverified image
+        uses: actions/download-artifact@v4
+        with:
+          name: nabu-image-unverified
+          path: .
+
+      - name: Download linux-nabu packages
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-nabu-packages
+          path: output/packages
+
+      - name: Download BK userspace packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bk-userspace-packages
+          path: output/packages
+
+      - name: Restore RootFS directory for verification
+        run: |
+          zstd -d --sparse staging-ci/rootfs.img.zst \
+            -o output/bk-nabu-rootfs.img
+          sudo mkdir -p output/bk-nabu-rootfs "$RUNNER_TEMP/nabu-rootfs-mount"
+          sudo mount -o loop,ro output/bk-nabu-rootfs.img "$RUNNER_TEMP/nabu-rootfs-mount"
+          sudo cp -a "$RUNNER_TEMP/nabu-rootfs-mount/." output/bk-nabu-rootfs/
+          sudo umount "$RUNNER_TEMP/nabu-rootfs-mount"
+
+      - name: Generate verification checksums
+        run: |
+          cd output
+          find packages -maxdepth 1 -type f -name '*.pkg.tar.*' -print \
+            | LC_ALL=C sort >../checksum-files
+          printf '%s\n' arch-linux-nabu.efi bk-nabu-rootfs.img \
+            >>../checksum-files
+          xargs -d '\n' sha256sum <../checksum-files >SHA256SUMS
+
+      - name: Verify RootFS and UKI
+        run: sudo env BK_PUBLIC_BUILD=1 BK_VERIFY_ROOTFS_ONLY=1 ./scripts/verify
+
+      - name: Name verified release files
+        env:
+          BUILD_TIME: ${{ needs.prepare.outputs.build_time }}
+        run: |
+          mkdir -p dist
+          cp staging-ci/rootfs.img.zst \
+            "dist/bk-Arch-nabu_rootfs-${BUILD_TIME}.img.zst"
+          cp output/arch-linux-nabu.efi \
+            "dist/bk-Arch-nabu_uki-${BUILD_TIME}.efi"
+          cd dist
+          sha256sum \
+            "bk-Arch-nabu_rootfs-${BUILD_TIME}.img.zst" \
+            "bk-Arch-nabu_uki-${BUILD_TIME}.efi" \
+            >SHA256SUMS
+
+      - name: Remove uncompressed verification files
+        run: |
+          sudo find output/bk-nabu-rootfs -depth -delete
+          find output/bk-nabu-rootfs.img -delete
+
+      - name: Upload verified workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bk-Arch-nabu-${{ needs.prepare.outputs.build_time }}
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+          path: dist/
+
+  publish:
+    needs:
+      - prepare
+      - verify
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified files
+        uses: actions/download-artifact@v4
+        with:
+          name: bk-Arch-nabu-${{ needs.prepare.outputs.build_time }}
+          path: dist
+
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+      - name: Confirm workflow artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: find dist -maxdepth 1 -type f -printf '%f\n' | sort

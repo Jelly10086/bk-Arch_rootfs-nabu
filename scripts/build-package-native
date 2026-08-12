@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+package_dir=${1:?package directory is required}
+package_path="$project_dir/packages/$package_dir"
+kernel_release=6.18.42-sm8150
+
+[[ $(uname -m) == aarch64 ]] || {
+  printf 'native package build requires AArch64, got %s\n' "$(uname -m)" >&2
+  exit 1
+}
+[[ -f $package_path/PKGBUILD ]] || {
+  printf 'missing PKGBUILD: %s\n' "$package_path" >&2
+  exit 1
+}
+
+"$project_dir/scripts/prepare-builder" >/dev/null
+distro_commit=$(git -C "$project_dir" rev-parse HEAD)
+mkosi_version=$(mkosi --version | awk '{print $2}')
+jobs=${BK_NATIVE_JOBS:-$(nproc)}
+
+"$project_dir/scripts/arch-builder-run" --user /usr/bin/bash -s -- \
+  "$package_dir" "$distro_commit" "$mkosi_version" "$kernel_release" "$jobs" <<'EOF'
+set -euo pipefail
+
+package_dir=$1
+distro_commit=$2
+mkosi_version=$3
+kernel_release=$4
+jobs=$5
+work_root="/workspace/makepkg/$package_dir"
+
+rm -rf -- "$work_root"
+install -d \
+  "$work_root/build" "$work_root/pkgdest" "$work_root/srcdest" \
+  "$work_root/logs" "$work_root/go-build" "$work_root/go-mod" \
+  /workspace/ccache /workspace/home
+
+env \
+  HOME=/workspace/home \
+  PKGDEST="$work_root/pkgdest" \
+  SRCDEST="$work_root/srcdest" \
+  BUILDDIR="$work_root/build" \
+  LOGDEST="$work_root/logs" \
+  GOCACHE="$work_root/go-build" \
+  GOMODCACHE="$work_root/go-mod" \
+  CCACHE_DIR=/workspace/ccache \
+  CCACHE_BASEDIR=/source \
+  CCACHE_COMPILERCHECK=content \
+  MAKEFLAGS="-j$jobs -l$jobs" \
+  PACKAGER='BK nabu CI <noreply@localhost>' \
+  GIT_CONFIG_COUNT=1 \
+  GIT_CONFIG_KEY_0=safe.directory \
+  GIT_CONFIG_VALUE_0='*' \
+  BK_NOCTALIA_SOURCE=/source/cache/sources/git/noctalia-pad \
+  BK_NOCTALIA_PAD_COMMIT=ceba6c02ba09b832315bc0ffe9f8c7b82423a983 \
+  BK_NOCTALIA_COMMIT=ceba6c02ba09b832315bc0ffe9f8c7b82423a983 \
+  BK_NOCTALIA_GREETER_COMMIT=d0180243312ebcb241c64391e7c42ac71a2fcac4 \
+  BK_END4_SOURCE=/source/cache/sources/git/dots-hyprland \
+  BK_END4_COMMIT=69f1a543196d47286a4630c2c0868a1827e512f2 \
+  BK_TQFTPSERV_SOURCE=/source/cache/sources/git/tqftpserv \
+  BK_LINUX_SOURCE=/source/cache/sources/git/linux-nabu \
+  BK_DISTRO_COMMIT="$distro_commit" \
+  BK_MKOSI_VERSION="$mkosi_version" \
+  BK_KERNEL_RELEASE="$kernel_release" \
+  /usr/bin/bash -lc \
+  "cd /source/packages/$package_dir && makepkg --noconfirm --clean --force --nodeps --cleanbuild"
+
+find "$work_root/pkgdest" -maxdepth 1 -type f \
+  \( -name '*.pkg.tar.zst' -o -name '*.pkg.tar.xz' \) \
+  -exec install -m644 -t /output/packages {} +
+EOF

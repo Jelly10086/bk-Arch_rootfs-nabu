@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=$(cd "$(dirname "$0")/.." && pwd)
+package_file="$project_dir/ci/ubuntu-24.04-arm-packages.txt"
+
+[[ $(uname -m) == aarch64 ]] || {
+  printf 'ubuntu-24.04-arm requires an AArch64 host, got %s\n' "$(uname -m)" >&2
+  exit 1
+}
+
+# shellcheck source=/dev/null
+. /etc/os-release
+[[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 ]] || {
+  printf 'expected Ubuntu 24.04, got %s %s\n' "${ID:-unknown}" "${VERSION_ID:-unknown}" >&2
+  exit 1
+}
+
+mapfile -t packages < <(sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$package_file")
+sudo apt-get update
+sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  "${packages[@]}"
+
+for command_name in \
+  bsdtar bwrap curl e2fsck file fsck.fat git mkfs.ext4 mkfs.fat mkosi \
+  mcopy repo-add systemd-nspawn ukify; do
+  command -v "$command_name" >/dev/null || {
+    printf 'missing CI dependency after installation: %s\n' "$command_name" >&2
+    exit 1
+  }
+done

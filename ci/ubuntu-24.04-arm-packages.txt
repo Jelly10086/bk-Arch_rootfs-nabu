@@ -1,0 +1,22 @@
+# Native ARM64 runner orchestration, image creation and verification tools.
+bubblewrap
+coreutils
+curl
+dosfstools
+e2fsprogs
+file
+findutils
+gawk
+git
+grep
+libarchive-tools
+mkosi
+mtools
+pacman-package-manager
+sed
+systemd-container
+systemd-ukify
+uidmap
+util-linux
+xz-utils
+zstd
