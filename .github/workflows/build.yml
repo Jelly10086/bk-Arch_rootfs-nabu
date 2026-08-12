@@ -54,6 +54,7 @@ jobs:
             'packages/linux-nabu/*.patch',
             'packages/linux-nabu/*.install',
             'ci/archlinuxarm-builder-packages.txt',
+            'scripts/arch-builder-run',
             'scripts/build-package-native',
             'scripts/prepare-builder') }}
 
@@ -73,6 +74,7 @@ jobs:
         if: steps.kernel-cache.outputs.cache-hit != 'true'
         env:
           BK_NATIVE_JOBS: "4"
+          BK_PRIVILEGED_BUILDER: "1"
         run: |
           ./scripts/build-packages linux-nabu
           mkdir -p ci-cache/kernel
@@ -110,6 +112,7 @@ jobs:
       - name: Build BK userspace packages
         env:
           BK_NATIVE_JOBS: "4"
+          BK_PRIVILEGED_BUILDER: "1"
         run: |
           ./scripts/build-packages \
             bk-packagelist bk-log bk-defaults \

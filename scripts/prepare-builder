@@ -37,8 +37,19 @@ fi
 mkdir -p "$builder_root/workspace" "$builder_root/mnt" \
   "$builder_root/run/systemd/resolve"
 
-bwrap \
-  --unshare-user --uid 0 --gid 0 \
+bwrap_command=(bwrap)
+bwrap_user_args=(--unshare-user --uid 0 --gid 0)
+if [[ ${BK_PRIVILEGED_BUILDER:-0} == 1 ]]; then
+  command -v sudo >/dev/null || {
+    echo 'BK_PRIVILEGED_BUILDER=1 requires sudo' >&2
+    exit 1
+  }
+  bwrap_command=(sudo bwrap)
+  bwrap_user_args=(--gid 0 --uid 0)
+fi
+
+"${bwrap_command[@]}" \
+  "${bwrap_user_args[@]}" \
   --unshare-pid --unshare-uts --unshare-ipc --share-net \
   --die-with-parent \
   --bind "$builder_root" / \
