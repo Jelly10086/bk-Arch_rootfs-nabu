@@ -51,7 +51,7 @@ ukify inspect "$uki" | grep -q '^\.dtb:'
 ukify inspect "$uki" | grep -q '^\.initrd:'
 
 grep -q 'exec-once = noctalia' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
-grep -q 'exec-once = systemctl --user start noctalia-pad-osk.service' \
+grep -q '^exec-once = noctalia-pad-osk start$' \
   "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q 'gaps_in = 8' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q '^monitor = DSI-1, preferred, auto, 1.6, transform, 3$' \
@@ -78,8 +78,9 @@ grep -q '^        transform = 3$' \
   "$rootfs/usr/share/noctalia-greeter/hyprland-end4.conf"
 ! grep -q -- '--session niri' "$rootfs/usr/share/noctalia-greeter/greetd_setup_lib.sh"
 [[ -f $rootfs/usr/lib/systemd/user/noctalia-pad-osk.service ]]
-grep -q 'exec qs -p' "$rootfs/usr/bin/noctalia-pad-osk"
-grep -q 'quickshell:oskToggle' "$rootfs/usr/bin/noctalia-pad-osk"
+grep -Fq 'qs -p "$end4_root/end4-osk-session.qml"' \
+  "$rootfs/usr/bin/noctalia-pad-osk"
+grep -Fq 'ipc call osk toggle' "$rootfs/usr/bin/noctalia-pad-osk"
 for end4_file in \
   modules/ii/onScreenKeyboard/OnScreenKeyboard.qml \
   modules/ii/onScreenKeyboard/OskContent.qml \
@@ -111,7 +112,9 @@ systemd-nspawn --quiet --directory="$rootfs" --register=no \
     id -nG unkn0wn | tr " " "\n" | grep -qx greeter
     pacman -Qk bk-defaults bk-log bk-packagelist noctalia-pad noctalia-greeter-pad noctalia-pad-osk linux-nabu yay
     pacman -Q hyprland noctalia-pad noctalia-greeter-pad noctalia-pad-osk \
-      quickshell ydotool ttf-material-symbols-variable papirus-icon-theme >/dev/null
+      quickshell ydotool qt6-positioning qt6-multimedia qt6-quicktimeline \
+      qt6-sensors qt6-virtualkeyboard kirigami kdialog syntax-highlighting \
+      ttf-material-symbols-variable papirus-icon-theme >/dev/null
     ! pacman -Q niri >/dev/null 2>&1
     ! pacman -Q bk-keyboard >/dev/null 2>&1
     test -x /usr/bin/Hyprland

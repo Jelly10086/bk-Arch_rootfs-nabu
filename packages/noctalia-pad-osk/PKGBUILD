@@ -1,13 +1,17 @@
 pkgname=noctalia-pad-osk
 pkgver=20260812
-pkgrel=1
+pkgrel=2
 pkgdesc='Original end-4 on-screen keyboard integration for Noctalia Pad'
 arch=('any')
 url='https://github.com/end-4/dots-hyprland'
 license=('GPL-3.0-only')
 depends=(
-  'bash' 'hyprland' 'quickshell' 'qt6-5compat' 'ydotool'
-  'ttf-material-symbols-variable'
+  'bash' 'hyprland' 'quickshell' 'ydotool'
+  'qt6-base' 'qt6-declarative' 'qt6-5compat' 'qt6-imageformats'
+  'qt6-multimedia' 'qt6-positioning' 'qt6-quicktimeline'
+  'qt6-sensors' 'qt6-svg' 'qt6-tools' 'qt6-translations'
+  'qt6-virtualkeyboard' 'qt6-wayland' 'kirigami' 'kdialog'
+  'syntax-highlighting' 'ttf-material-symbols-variable'
 )
 
 _commit=${BK_END4_COMMIT:?BK_END4_COMMIT is required}

@@ -1,6 +1,6 @@
 pkgname=bk-defaults
 pkgver=1.0.0
-pkgrel=29
+pkgrel=30
 pkgdesc="XiaomiPad5 identity, fonts, Hyprland and Noctalia defaults"
 arch=('any')
 license=('GPL-3.0-or-later' 'OFL-1.1')
