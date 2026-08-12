@@ -59,6 +59,8 @@ grep -q '^monitor = DSI-1, preferred, auto, 1.6, transform, 3$' \
 grep -q '^        output = DSI-1$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q '^        transform = 3$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q '^    hide_on_touch = true$' "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
+grep -q '^bind = SUPER, F, togglefloating$' \
+  "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q '^windowrule = float on, match:class \.\*$' \
   "$rootfs/home/unkn0wn/.config/hypr/hyprland.conf"
 grep -q 'noctalia-pad-osk toggle' "$rootfs/home/unkn0wn/.config/noctalia/config.toml"
@@ -83,13 +85,18 @@ grep -Fq 'qs -p "$end4_root/end4-osk-session.qml"' \
 grep -Fq 'ipc call osk toggle' "$rootfs/usr/bin/noctalia-pad-osk"
 for end4_file in \
   modules/ii/onScreenKeyboard/OskContent.qml \
-  modules/ii/onScreenKeyboard/OskKey.qml \
-  modules/ii/onScreenKeyboard/layouts.js \
   services/Ydotool.qml; do
   cmp \
     "$rootfs/usr/share/noctalia-pad/end4-osk/ii/$end4_file" \
     "$project_dir/cache/sources/git/dots-hyprland/dots/.config/quickshell/ii/$end4_file"
 done
+grep -Fq 'icon: "icons/bolt-boost.svg"' \
+  "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/layouts.js"
+grep -Fq 'keycode: 125' \
+  "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/layouts.js"
+grep -Fq 'Qt.resolvedUrl(root.keyData.icon)' \
+  "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/OskKey.qml"
+[[ -f $rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/icons/bolt-boost.svg ]]
 grep -Fq 'component ResizeHandle: Item' \
   "$rootfs/usr/share/noctalia-pad/end4-osk/ii/modules/ii/onScreenKeyboard/OnScreenKeyboard.qml"
 grep -Fq 'Layout.minimumHeight: 44' \
